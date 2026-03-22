@@ -54,7 +54,10 @@ export const EstimateSheet = ({
     }
   };
 
-  const shareText = `この物件の初期費用、AIで概算してみた✨\n${propertyName ? propertyName + " " : ""}初期費用合計：${formatCurrency(result.total ?? 0)}\nお部屋探しは xrooms.net`;
+  const abTotal = (result.subtotals?.contract ?? 0) + (result.subtotals?.option ?? 0) + (result.subtotals?.cleaning ?? 0);
+  const rentNum0 = parseFloat(rent || "0");
+  const mgmtNum0 = parseFloat(managementFee || "0");
+  const shareText = `この物件の初期費用、AIで概算してみた✨\n${propertyName ? propertyName + " " : ""}月額${formatCurrency(rentNum0 + mgmtNum0)}  初期費用は${formatCurrency(abTotal)}＋契約時前家賃でし✨\nお部屋探しは xrooms.net`;
 
   const handleShare = async () => {
     // まずPNG生成
@@ -215,14 +218,13 @@ export const EstimateSheet = ({
 
         {/* 合計 */}
         <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
-          <div className="flex justify-between items-center flex-wrap gap-2">
-            <div>
-              <p className="text-sm font-bold text-blue-800">初期費用合計（概算）</p>
-              {result.prorationInfo && (
-                <p className="text-xs text-blue-600 mt-0.5">契約開始日(仮)　{result.prorationInfo.startDate}〜</p>
-              )}
-            </div>
-            <p className="text-3xl font-bold text-blue-700">{formatCurrency(result.total ?? 0)}</p>
+          <p className="text-xs font-bold text-blue-800 mb-1">初期費用概算</p>
+          {result.prorationInfo && (
+            <p className="text-xs text-blue-600 mb-2">契約開始日(仮)　{result.prorationInfo.startDate}〜</p>
+          )}
+          <div className="flex items-baseline gap-1 flex-wrap">
+            <span className="text-3xl font-bold text-blue-700">{formatCurrency((result.subtotals?.contract ?? 0) + (result.subtotals?.option ?? 0) + (result.subtotals?.cleaning ?? 0))}</span>
+            <span className="text-sm text-blue-500 font-medium">＋契約時前家賃（初月賃料日割り＋翌月賃料１ヶ月分）</span>
           </div>
         </div>
 
@@ -333,9 +335,13 @@ export const EstimateSheet = ({
           })()}
 
           {/* 合計ライン */}
-          <div className="border-t-2 border-gray-800 pt-3 flex justify-between items-center">
-            <p className="font-bold text-gray-900 text-sm">初期費用合計（概算）</p>
-            <p className="font-bold text-blue-700 text-2xl">{formatCurrency(result.total ?? 0)}</p>
+          <div className="border-t-2 border-gray-800 pt-3">
+            <p className="font-bold text-gray-900 text-xs mb-1">初期費用概算</p>
+            <div className="flex items-baseline gap-1 flex-wrap">
+              <span className="font-bold text-blue-700 text-2xl">{formatCurrency((result.subtotals?.contract ?? 0) + (result.subtotals?.option ?? 0) + (result.subtotals?.cleaning ?? 0))}</span>
+              <span className="text-xs text-blue-500 font-medium">＋契約時前家賃（初月賃料日割り＋翌月賃料１ヶ月分）</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">合計（前家賃含む）: {formatCurrency(result.total ?? 0)}</p>
           </div>
 
           <p className="text-xs text-gray-400 text-center pt-1">
