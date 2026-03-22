@@ -371,19 +371,19 @@ export const EstimateSheet = ({
               {/* 更新時の費用 */}
               {showRenewal && (() => {
                 const rentNum = parseFloat(rent || "0");
-                const renewalFee = renewalFeeRate ? Math.floor(rentNum * parseFloat(renewalFeeRate)) : 0;
-                const renewalAdminFee = renewalAdminFeeRate ? Math.floor(rentNum * parseFloat(renewalAdminFeeRate) * 1.1) : 0;
-                const gRenewal = guaranteeRenewalFee ? parseFloat(guaranteeRenewalFee) : 0;
-                const insRenewal = insuranceRenewalFee ? parseFloat(insuranceRenewalFee) : 0;
-                const supRenewal = supportRenewalFee ? parseFloat(supportRenewalFee) : 0;
+                const renewalFee = renewalFeeRate && parseFloat(renewalFeeRate) > 0 ? Math.floor(rentNum * parseFloat(renewalFeeRate)) : 0;
+                const renewalAdminFee = renewalAdminFeeRate && parseFloat(renewalAdminFeeRate) > 0 ? Math.floor(rentNum * parseFloat(renewalAdminFeeRate) * 1.1) : 0;
+                const gRenewal = guaranteeRenewalFee && parseFloat(guaranteeRenewalFee) > 0 ? parseFloat(guaranteeRenewalFee) : 0;
+                const insRenewal = insuranceRenewalFee && parseFloat(insuranceRenewalFee) > 0 ? parseFloat(insuranceRenewalFee) : 0;
+                const supRenewal = supportRenewalFee && parseFloat(supportRenewalFee) > 0 ? parseFloat(supportRenewalFee) : 0;
                 const renewalTotal = renewalFee + renewalAdminFee + gRenewal + insRenewal + supRenewal;
-                const naNote = "記載がなかったため未算入（別途費用が発生する場合があります）";
+                const naNote = "記載がなかったため未算入（別途費用が発生する場合があります。詳しくはお問い合わせください）";
                 const items2 = [
-                  { label: `更新料（${renewalFeeRate}ヶ月分）`, amount: renewalFee, missing: renewalFee === 0 },
-                  { label: `更新事務手数料（${renewalAdminFeeRate}ヶ月税別）`, amount: renewalAdminFee, missing: renewalAdminFee === 0 },
-                  { label: "保証会社更新料", amount: gRenewal, note: "/年", missing: gRenewal === 0 },
-                  { label: "火災保険", amount: insRenewal, note: "/2年", missing: insRenewal === 0 },
-                  { label: "24時間サポート", amount: supRenewal, note: "/2年", missing: supRenewal === 0 },
+                  { label: `更新料${renewalFeeRate ? `（${renewalFeeRate}ヶ月分）` : ""}`, amount: renewalFee, missing: !renewalFeeRate || renewalFee === 0 },
+                  { label: `更新事務手数料${renewalAdminFeeRate ? `（${renewalAdminFeeRate}ヶ月税別）` : ""}`, amount: renewalAdminFee, missing: !renewalAdminFeeRate || renewalAdminFee === 0 },
+                  { label: "保証会社更新料", amount: gRenewal, note: "/年", missing: !guaranteeRenewalFee || gRenewal === 0 },
+                  { label: "火災保険", amount: insRenewal, note: "/2年", missing: !insuranceRenewalFee || insRenewal === 0 },
+                  { label: "24時間サポート", amount: supRenewal, note: "/2年", missing: !supportRenewalFee || supRenewal === 0 },
                 ];
                 return (
                   <div>
