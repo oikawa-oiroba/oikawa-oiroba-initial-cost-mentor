@@ -73,6 +73,7 @@ export const RentalCalculator = () => {
   const [remaining, setRemaining] = useState(getRemainingCount());
   const [result, setResult] = useState<any>(null);
   const [monthlyResult, setMonthlyResult] = useState<number|null>(null);
+  const [monthlyItems, setMonthlyItems] = useState<Array<{label: string; amount: number}>>([]);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,6 +112,21 @@ export const RentalCalculator = () => {
     if (ex.guaranteeFeeType) setGuaranteeFeeType(ex.guaranteeFeeType as "rate"|"fixed");
     if (ex.guaranteeFeeRate) setGuaranteeFeeRate(ex.guaranteeFeeRate);
     if (ex.guaranteeFeeFixed) setGuaranteeFeeFixed(ex.guaranteeFeeFixed);
+    // 毎月の費用を自動反映
+    let hasMonthly = false;
+    if (ex.guaranteeMonthlyRate) {
+      setGuaranteeMonthlyRate(ex.guaranteeMonthlyRate);
+      hasMonthly = true;
+    }
+    if (ex.insuranceMonthly) {
+      setInsuranceMonthly(ex.insuranceMonthly);
+      hasMonthly = true;
+    }
+    if (ex.supportMonthly) {
+      setSupportMonthly(ex.supportMonthly);
+      hasMonthly = true;
+    }
+    if (hasMonthly) setShowMonthly(true);
     if (ex.availableDate) setMoveInDate(ex.availableDate);
     if (ex.insuranceFee != null) { setHasInsurance(true); setInsuranceFee(ex.insuranceFee); }
     if (ex.keyExchangeFee != null) { setHasKeyExchange(true); setKeyExchangeFee(ex.keyExchangeFee); }
@@ -221,17 +237,34 @@ export const RentalCalculator = () => {
     };
     setResult(calculateInitialCost(input));
     if (showMonthly) {
+      const rentNum2 = rentNum;
+      const mgmtNum2 = mgmtNum;
+      const gRate = guaranteeMonthlyRate ? parseFloat(guaranteeMonthlyRate) : 0;
+      const gFixed = guaranteeMonthlyFixed ? parseFloat(guaranteeMonthlyFixed) : 0;
+      const guaranteeMonthly = gRate > 0 ? Math.floor((rentNum2 + mgmtNum2) * (gRate / 100)) : gFixed;
       const monthly: MonthlyInput = {
-        guaranteeMonthlyRate: guaranteeMonthlyRate ? parseFloat(guaranteeMonthlyRate) : 0,
-        guaranteeMonthlyFixed: guaranteeMonthlyFixed ? parseFloat(guaranteeMonthlyFixed) : 0,
+        guaranteeMonthlyRate: gRate,
+        guaranteeMonthlyFixed: gFixed,
         insuranceMonthly: parseFloat(insuranceMonthly),
         supportMonthly: parseFloat(supportMonthly),
         townFee: parseFloat(townFee),
         otherMonthlyName, otherMonthlyFee: parseFloat(otherMonthlyFee),
       };
-      setMonthlyResult(calculateMonthlyTotal(rentNum, mgmtNum, monthly));
+      setMonthlyResult(calculateMonthlyTotal(rentNum2, mgmtNum2, monthly));
+      // 内訳を生成
+      const items = [
+        { label: "家賃", amount: rentNum2 },
+        ...(mgmtNum2 > 0 ? [{ label: "管理費・共益費", amount: mgmtNum2 }] : []),
+        ...(guaranteeMonthly > 0 ? [{ label: `保証会社（月額${gRate > 0 ? gRate + "%" : ""}）`, amount: guaranteeMonthly }] : []),
+        ...(parseFloat(insuranceMonthly) > 0 ? [{ label: "火災保険（月割）", amount: parseFloat(insuranceMonthly) }] : []),
+        ...(parseFloat(supportMonthly) > 0 ? [{ label: "24時間サポート", amount: parseFloat(supportMonthly) }] : []),
+        ...(parseFloat(townFee) > 0 ? [{ label: "町内会費", amount: parseFloat(townFee) }] : []),
+        ...(parseFloat(otherMonthlyFee) > 0 ? [{ label: otherMonthlyName, amount: parseFloat(otherMonthlyFee) }] : []),
+      ];
+      setMonthlyItems(items);
     } else {
       setMonthlyResult(null);
+      setMonthlyItems([]);
     }
   };
 
@@ -274,6 +307,7 @@ export const RentalCalculator = () => {
             <h1 className="text-2xl font-bold text-gray-900">賃貸初期費用シミュレーター</h1>
           </div>
           <p className="text-xs text-gray-400">powered by XROOMS</p>
+          <p className="text-sm text-gray-500 mt-2">お手元の図面ファイルをアップロードしてください</p>
         </div>
 
         {/* AI画像解析 */}
@@ -325,7 +359,7 @@ export const RentalCalculator = () => {
               </div>
             )}
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+          <input ref={fileInputRef} type="file" accept="image/*,application/pdf" onChange={handleImageUpload} className="hidden" />
 
           {/* URL取得 */}
           <div className="mt-3">
@@ -339,7 +373,7 @@ export const RentalCalculator = () => {
                 type="url"
                 value={propertyUrl}
                 onChange={e => setPropertyUrl(e.target.value)}
-                placeholder="https://suumo.jp/chintai/..."
+                placeholder="https://abm.athome.jp/****"
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               />
               <button
@@ -350,7 +384,7 @@ export const RentalCalculator = () => {
                 {isFetchingUrl ? "取得中..." : "取得"}
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1">アットホーム（abm.athome.jp）・Nomad Cloud対応</p>
+            <p className="text-xs text-gray-400 mt-1">※URL読み込みは現在開発中です</p>
           </div>
 
           {analyzeSuccess && <p className="text-xs text-green-600 mt-2 font-medium">✓ 物件情報を自動入力しました。内容を確認してください。</p>}
@@ -369,7 +403,7 @@ export const RentalCalculator = () => {
                   className="text-xs text-gray-400 underline">解除を取り消す</button>
               ) : (
                 <button onClick={() => setShowUnlockInput(!showUnlockInput)}
-                  className="text-xs text-purple-500 underline">社内向け解除キー</button>
+                  className="text-gray-300 hover:text-gray-400 text-xs transition-colors">🔑</button>
               )}
             </div>
           </div>
@@ -568,6 +602,7 @@ export const RentalCalculator = () => {
           <EstimateSheet
             result={result}
             monthlyResult={monthlyResult}
+            monthlyItems={monthlyItems}
             propertyName={propertyName}
             roomNumber={roomNumber}
             propertyAddress={propertyAddress}
