@@ -25,6 +25,7 @@ export interface ExtractedPropertyData {
   hasContractFee?: boolean;
   contractFee?: string;
   extraItems?: ExtraItem[];
+  adRate?: number;
 }
 
 export const extractPropertyDataFromImage = async (
@@ -43,12 +44,13 @@ export const extractPropertyDataFromImage = async (
     "keyMoneyMonths: 礼金(ヶ月数の数値のみ。なしなら0)",
     "propertyName: 物件名(建物名)",
     "roomNumber: 部屋番号",
-    "agencyFeeType: 仲介手数料の種類(1.1=1ヶ月+消費税 / 0.55=0.5ヶ月+消費税 / 118000=118000円税別 / 0=無料・AD100%物件 / custom=その他固定)",
+    "agencyFeeType: 仲介手数料の種類(後述のルールで判定)",
     "customAgencyFee: agencyFeeTypeがcustomの場合の税込金額(数値のみ)",
     "guaranteeFeeType: 保証会社費用の種類(rate=料率 / fixed=固定金額)",
     "guaranteeFeeRate: 料率の場合の%(数値のみ 例:50)",
     "guaranteeFeeFixed: 固定金額の場合の円(数値のみ)",
     "availableDate: 入居可能日・入居時期(YYYY-MM-DD形式。即入居可・即時の場合は今日の日付。記載なければnull)",
+    "adRate: 広告料・AD・業務委託料・業務委託補助手数料の%数値。これら以外の表記はADとみなさない。(数値のみ。なければnull)",
     "insuranceFee: 火災保険料(円、数値のみ。記載があれば金額、なければnull)",
     "keyExchangeFee: 鍵交換費用(円、数値のみ。記載があれば金額、なければnull)",
     "cleaningFee: 退去時クリーニング費用(円、数値のみ。記載があれば金額、なければnull)",
@@ -59,11 +61,15 @@ export const extractPropertyDataFromImage = async (
     "contractFee: 契約事務手数料(円、数値のみ)",
     "extraItems: 上記以外の特殊費用の配列。SAT119・消火剤・光触媒・害虫駆除・その他オプションなど。各要素は{name:項目名, amount:円数値}形式",
     "",
-    "読み取りルール:",
+    "【agencyFeeTypeの判定ルール - 重要】",
+    "まずadRateを読み取る。AD・広告料・業務委託料・業務委託補助手数料という文言がある場合のみadRateを設定する。",
+    "「客付け100%」「配分」「取り分」などはADではないので無視する。",
+    "adRate >= 100 → agencyFeeType = 0(仲介手数料無料)",
+    "adRate < 100、またはadRateがnull → agencyFeeTypeはnullにする(呼び出し側で家賃から自動判定する)",
+    "",
+    "【その他の読み取りルール】",
     "敷金なし・敷0 → depositMonths=0",
     "礼金なし・礼0 → keyMoneyMonths=0",
-    "AD100%・仲介手数料無料 → agencyFeeType=0",
-    "AD50%など → agencyFeeType=1.1(借主側は1ヶ月負担)",
     "保証会社が固定額 → guaranteeFeeType=fixed",
     "保証会社が料率 → guaranteeFeeType=rate",
     "即入居可 → availableDate=今日の日付",
@@ -131,6 +137,7 @@ export const extractPropertyDataFromImage = async (
     guaranteeFeeRate: parsed.guaranteeFeeRate != null ? String(parsed.guaranteeFeeRate) : undefined,
     guaranteeFeeFixed: parsed.guaranteeFeeFixed != null ? String(parsed.guaranteeFeeFixed) : undefined,
     availableDate: parsed.availableDate || undefined,
+    adRate: parsed.adRate != null ? Number(parsed.adRate) : undefined,
     insuranceFee: parsed.insuranceFee != null ? String(parsed.insuranceFee) : undefined,
     keyExchangeFee: parsed.keyExchangeFee != null ? String(parsed.keyExchangeFee) : undefined,
     cleaningFee: parsed.cleaningFee != null ? String(parsed.cleaningFee) : undefined,
