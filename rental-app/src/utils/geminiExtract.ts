@@ -3,6 +3,11 @@ export interface ExtraItem {
   amount: number;
 }
 
+export interface EvidenceItem {
+  text: string;       // 図面上の文言
+  source: "detected" | "estimated" | "default"; // detected=図面から取得, estimated=推定, default=デフォルト値
+}
+
 export interface ExtractedPropertyData {
   rent?: string;
   managementFee?: string;
@@ -20,7 +25,9 @@ export interface ExtractedPropertyData {
   insuranceFee?: string;
   keyExchangeFee?: string;
   cleaningFee?: string;
+  acCleaningFee?: string;
   supportFee?: string;
+  supportFeeName?: string;
   hasDisinfection?: boolean;
   disinfectionFee?: string;
   hasContractFee?: boolean;
@@ -30,8 +37,8 @@ export interface ExtractedPropertyData {
   insuranceMonthly?: string;
   supportMonthly?: string;
   adRate?: number;
-  // 根拠テキスト
-  evidence?: Record<string, string>;
+  evidence?: Record<string, EvidenceItem>;
+  warnings?: string[];
 }
 
 export const extractPropertyDataFromImage = async (
@@ -57,36 +64,57 @@ export const extractPropertyDataFromImage = async (
     "guaranteeFeeRate: 料率の場合の%(数値のみ 例:50)",
     "guaranteeFeeFixed: 固定金額の場合の円(数値のみ)",
     "availableDate: 入居可能日・入居時期(YYYY-MM-DD形式。即入居可・即時の場合は今日の日付。記載なければnull)",
-    "adRate: 広告料・AD・業務委託料・業務委託補助手数料の%数値。これら以外の表記はADとみなさない。(数値のみ。なければnull)",
+    "adRate: 広告料・AD・業務委託料・業務委託補助手数料の%数値。これら以外の表記はADとみなさない(数値のみ。なければnull)",
     "insuranceFee: 火災保険料(円、数値のみ。記載があれば金額、なければnull)",
     "keyExchangeFee: 鍵交換費用(円、数値のみ。記載があれば金額、なければnull)",
-    "cleaningFee: 退去時クリーニング費用(円、数値のみ。記載があれば金額、なければnull)",
-    "supportFee: 24時間サポート・ホームメイト24・緊急駆けつけサービスなど(円、数値のみ。記載があれば金額、なければnull)",
+    "cleaningFee: 退去時クリーニング・ハウスクリーニング費用(円、数値のみ。記載があれば金額、なければnull)",
+    "acCleaningFee: エアコン洗浄・エアコンクリーニング費用(円、数値のみ。記載があれば金額、なければnull)",
+    "supportFee: 24時間サポート・ホームメイト24・緊急駆けつけ・トラブルサポートなど(円、数値のみ。記載があれば金額、なければnull)",
+    "supportFeeName: supportFeeの図面上の正確な項目名(例:「ホームメイスター24」「トラブルサポート24」など)",
     "hasDisinfection: 室内除菌・抗菌施工・光触媒コーティングの記載があればtrue",
     "disinfectionFee: 室内除菌費用(円、数値のみ)",
     "hasContractFee: 契約事務手数料の記載があればtrue",
     "contractFee: 契約事務手数料(円、数値のみ)",
-    "extraItems: 上記以外の特殊費用の配列。SAT119・消火剤・光触媒・害虫駆除・その他オプションなど。各要素は{name:項目名, amount:円数値}形式",
+    "extraItems: 上記以外の特殊費用の配列。SAT119・消火剤・害虫駆除・その他オプションなど。各要素は{name:項目名, amount:円数値}形式",
     "guaranteeMonthlyRate: 保証会社の月額料率%(数値のみ。「月額1%」「毎月1%」などの記載があれば抽出。なければnull)",
     "insuranceMonthly: 火災保険の月額(円、数値のみ。月額記載がある場合のみ。一括払いの場合はnull)",
-    "supportMonthly: 24時間サポート・ホームメイト24の月額(円、数値のみ。月額記載がある場合のみ。なければnull)",
+    "supportMonthly: 24時間サポートの月額(円、数値のみ。月額記載がある場合のみ。なければnull)",
     "",
-    "【agencyFeeTypeの判定ルール - 重要】",
-    "まずadRateを読み取る。AD・広告料・業務委託料・業務委託補助手数料という文言がある場合のみadRateを設定する。",
-    "「客付け100%」「配分」「取り分」などはADではないので無視する。",
-    "adRate >= 100 → agencyFeeType = 0(仲介手数料無料)",
-    "adRate < 100、またはadRateがnull → agencyFeeTypeはnullにする(呼び出し側で家賃から自動判定する)",
+    "evidence: 各項目の根拠。以下のキーで図面上の文言と判定根拠を返す:",
+    "{",
+    "  rent: {text:\"図面上の文言そのまま\", source:\"detected\"},",
+    "  managementFee: {text:\"共益費5,000円\", source:\"detected\"},",
+    "  deposit: {text:\"敷金1ヶ月\", source:\"detected\"},",
+    "  keyMoney: {text:\"礼金1ヶ月\", source:\"detected\"},",
+    "  agencyFee: {text:\"客付100%のため0円と判定\", source:\"detected\"},",
+    "  guarantee: {text:\"保証会社加入必須(50〜80%)\", source:\"detected\"},",
+    "  insurance: {text:\"火災保険22,000円/2年\", source:\"detected\"},",
+    "  keyExchange: {text:\"鍵交換19,800円(税込)\", source:\"detected\"},",
+    "  cleaning: {text:\"ハウスクリーニング費用負担有\", source:\"detected\"},",
+    "  acCleaning: {text:\"エアコンクリーニング費用負担有\", source:\"detected\"},",
+    "  support: {text:\"ホームメイスター24 16,500円(税込)という文言から24時間サポートと判定\", source:\"detected\"},",
+    "  availableDate: {text:\"3月下旬入居可\", source:\"detected\"},",
+    "  disinfection: {text:\"光触媒コーティングプラス\", source:\"detected\"}",
+    "}",
+    "記載がなくデフォルト値を使用した項目はsource:\"default\"、図面から推定した場合はsource:\"estimated\"",
     "",
-    "【その他の読み取りルール】",
+    "warnings: 以下の注意事項が図面に含まれる場合、該当する警告文字列の配列を返す:",
+    "- 定期借家・定借・定期建物賃貸借 → \"定期借家契約のため再契約ができない可能性があります。\"",
+    "- 旧耐震・1981年以前築・昭和56年以前 → \"1982年(昭和56年)以前に建てられた建物です(旧耐震基準の建物である可能性があります)。\"",
+    "- 1年契約・契約期間1年 → \"1年毎契約の物件です。\"",
+    "- 賃料改定・賃料見直し・更新時賃料変更 → \"更新時に賃料改定が予定されています。\"",
+    "",
+    "【agencyFeeTypeの判定ルール】",
+    "AD・広告料・業務委託料・業務委託補助手数料という文言がある場合のみadRateを設定",
+    "「客付け100%」「配分」「取り分」などはADではない",
+    "adRate >= 100 → agencyFeeType = 0",
+    "adRate < 100またはnull → agencyFeeTypeはnullにする",
+    "",
+    "【その他ルール】",
     "敷金なし・敷0 → depositMonths=0",
     "礼金なし・礼0 → keyMoneyMonths=0",
-    "保証会社が固定額 → guaranteeFeeType=fixed",
-    "保証会社が料率 → guaranteeFeeType=rate",
     "即入居可 → availableDate=今日の日付",
-    "火災保険・鍵交換・クリーニング・サポートは図面に記載がある場合のみ金額を返す。記載なければnull",
     "見つからない項目はnull",
-    "",
-    "evidence: 各項目の根拠となった図面上の文言。{rent:\"1LDK 130,000円\", managementFee:\"共益費5,000円\", deposit:\"敷金1ヶ月\", keyMoney:\"礼金1ヶ月\", agencyFee:\"客付100%\", guarantee:\"保証会社加入必須(50〜80%)\", insurance:\"火災保険22,000円/2年\", keyExchange:\"鍵交換19,800円\", support:\"ホームメイスター24 16,500円\", availableDate:\"3月下旬入居可\"}のように抜き出した文言をそのまま入れる。見つからない項目は省略。",
     "",
     "JSONのみで返してください。説明文やマークダウンは不要です。"
   ];
@@ -98,12 +126,7 @@ export const extractPropertyDataFromImage = async (
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: base64Image } }
-          ]
-        }],
+        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64Image } }] }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
       })
     }
@@ -116,11 +139,7 @@ export const extractPropertyDataFromImage = async (
 
   const data = await response.json();
   const parts = data.candidates?.[0]?.content?.parts || [];
-  const text = parts
-    .filter((p: any) => !p.thought)
-    .map((p: any) => p.text || "")
-    .join("");
-
+  const text = parts.filter((p: any) => !p.thought).map((p: any) => p.text || "").join("");
   const jsonMatch = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("解析に失敗しました。もう一度お試しください。");
 
@@ -133,6 +152,13 @@ export const extractPropertyDataFromImage = async (
       if (item.name && item.amount != null) {
         extraItems.push({ name: String(item.name), amount: Number(item.amount) });
       }
+    }
+  }
+
+  const warnings: string[] = [];
+  if (Array.isArray(parsed.warnings)) {
+    for (const w of parsed.warnings) {
+      if (typeof w === "string") warnings.push(w);
     }
   }
 
@@ -154,7 +180,9 @@ export const extractPropertyDataFromImage = async (
     insuranceFee: parsed.insuranceFee != null ? String(parsed.insuranceFee) : undefined,
     keyExchangeFee: parsed.keyExchangeFee != null ? String(parsed.keyExchangeFee) : undefined,
     cleaningFee: parsed.cleaningFee != null ? String(parsed.cleaningFee) : undefined,
+    acCleaningFee: parsed.acCleaningFee != null ? String(parsed.acCleaningFee) : undefined,
     supportFee: parsed.supportFee != null ? String(parsed.supportFee) : undefined,
+    supportFeeName: parsed.supportFeeName || undefined,
     hasDisinfection: parsed.hasDisinfection || false,
     disinfectionFee: parsed.disinfectionFee != null ? String(parsed.disinfectionFee) : undefined,
     hasContractFee: parsed.hasContractFee || false,
@@ -164,6 +192,7 @@ export const extractPropertyDataFromImage = async (
     insuranceMonthly: parsed.insuranceMonthly != null ? String(parsed.insuranceMonthly) : undefined,
     supportMonthly: parsed.supportMonthly != null ? String(parsed.supportMonthly) : undefined,
     evidence: parsed.evidence && typeof parsed.evidence === "object" ? parsed.evidence : undefined,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 };
 
