@@ -53,7 +53,7 @@ export const extractPropertyDataFromImage = async (
   // thinking modelはparts配列にtextとthoughtが混在するため全partsのtextを結合
   const parts = data.candidates?.[0]?.content?.parts || [];
   const text = parts.map((p: any) => p.text || "").join("");
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  const jsonMatch = text.replace(/```json\n?/g, "").replace(/```/g, "").match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     console.error("Response text:", text);
     throw new Error("JSONが見つかりません: " + text.slice(0, 100));
