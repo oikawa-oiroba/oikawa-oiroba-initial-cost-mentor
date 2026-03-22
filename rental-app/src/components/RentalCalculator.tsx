@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { formatCurrency, calculateInitialCost, calculateMonthlyTotal, InitialCostInput, MonthlyInput, getDefaultMoveInDate } from "../utils/rentalCalculations";
 import { extractPropertyDataFromImage, fileToBase64 } from "../utils/geminiExtract";
 import { extractFromUrl } from "../utils/urlExtract";
+import { canUseApi, incrementUsage, getRemainingCount, isUnlocked, verifyUnlockKey, removeUnlockToken } from "../utils/rateLimit";
 import { EstimateSheet } from "./EstimateSheet";
 
 const AGENCY_OPTIONS = [
@@ -66,6 +67,10 @@ export const RentalCalculator = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
   const [analyzeSuccess, setAnalyzeSuccess] = useState(false);
+  const [showUnlockInput, setShowUnlockInput] = useState(false);
+  const [unlockKeyInput, setUnlockKeyInput] = useState("");
+  const [unlocked, setUnlocked] = useState(isUnlocked());
+  const [remaining, setRemaining] = useState(getRemainingCount());
   const [result, setResult] = useState<any>(null);
   const [monthlyResult, setMonthlyResult] = useState<number|null>(null);
   const [error, setError] = useState("");
@@ -87,12 +92,18 @@ export const RentalCalculator = () => {
     if (ex.roomNumber) setRoomNumber(ex.roomNumber);
     if (ex.propertyAddress) setPropertyAddress(ex.propertyAddress);
     if (ex.agencyFeeType === "0") {
+      // AD100%以上 → 無料
       setAgencyFeeType("0");
-    } else if (ex.agencyFeeType == null && ex.adRate == null) {
+    } else if (ex.agencyFeeType == null) {
+      // AD記載なし or AD100未満 → 家賃で自社ルール自動判定
       const rentNum = ex.rent ? parseFloat(ex.rent) : 0;
-      if (rentNum <= 118000) setAgencyFeeType("1.1");
-      else if (rentNum <= 240000) setAgencyFeeType("118000");
-      else setAgencyFeeType("0.55");
+      if (rentNum < 118000) {
+        setAgencyFeeType("1.1"); // 118,000円未満 → 1ヶ月（税別）
+      } else if (rentNum <= 240000) {
+        setAgencyFeeType("118000"); // 118,000〜240,000円 → 118,000円（税別）
+      } else {
+        setAgencyFeeType("0.55"); // 240,000円超 → 0.5ヶ月（税別）
+      }
     } else if (ex.agencyFeeType) {
       setAgencyFeeType(ex.agencyFeeType);
     }
@@ -127,7 +138,13 @@ export const RentalCalculator = () => {
     setError("");
     setAnalyzeSuccess(false);
     try {
+      if (!canUseApi()) {
+        setError("本日の無料利用上限（5回）に達しました。");
+        return;
+      }
       const ex = await extractFromUrl(propertyUrl);
+      incrementUsage();
+      setRemaining(getRemainingCount());
       applyExtracted(ex);
     } catch (err: any) {
       setError(err.message || "URL取得エラー");
@@ -142,7 +159,10 @@ export const RentalCalculator = () => {
     const reader = new FileReader();
     reader.onload = (ev) => setPropertyImage(ev.target?.result as string);
     reader.readAsDataURL(file);
-    if (!apiKey) { setShowApiKeyInput(true); return; }
+    if (!canUseApi()) {
+      setError("本日の無料利用上限（5回）に達しました。明日またご利用ください。");
+      return;
+    }
     await analyzeImage(file);
   };
 
@@ -151,84 +171,17 @@ export const RentalCalculator = () => {
     setError("");
     setAnalyzeSuccess(false);
     try {
+      const envKey = import.meta.env.VITE_GEMINI_API_KEY || "";
       const { base64, mimeType } = await fileToBase64(file);
-      const ex = await extractPropertyDataFromImage(base64, mimeType, apiKey);
-
-      if (ex.rent) setRent(ex.rent);
-      if (ex.managementFee) setManagementFee(ex.managementFee);
-      if (ex.depositMonths != null) {
-        setDepositMonths(ex.depositMonths);
-        // 敷金0の場合、クリーニングを55000円でON
-        if (ex.depositMonths === "0") {
-          setHasCleaning(true);
-          setCleaningFee("55000");
-        }
-      }
-      if (ex.keyMoneyMonths != null) setKeyMoneyMonths(ex.keyMoneyMonths);
-      if (ex.propertyName) setPropertyName(ex.propertyName);
-      if (ex.roomNumber) setRoomNumber(ex.roomNumber);
-      // AD判定 → 仲介手数料自動設定
-      if (ex.agencyFeeType === "0") {
-        // AD100%以上 → 無料
-        setAgencyFeeType("0");
-      } else if (ex.agencyFeeType == null && ex.adRate == null) {
-        // AD記載なし → 家賃で自社ルール自動判定
-        const rentNum = ex.rent ? parseFloat(ex.rent) : 0;
-        if (rentNum <= 118000) {
-          setAgencyFeeType("1.1");
-        } else if (rentNum <= 240000) {
-          setAgencyFeeType("118000");
-        } else {
-          setAgencyFeeType("0.55");
-        }
-      } else if (ex.agencyFeeType) {
-        setAgencyFeeType(ex.agencyFeeType);
-      }
-      if (ex.customAgencyFee) setCustomAgencyFee(ex.customAgencyFee);
-      if (ex.guaranteeFeeType) setGuaranteeFeeType(ex.guaranteeFeeType as "rate"|"fixed");
-      if (ex.guaranteeFeeRate) setGuaranteeFeeRate(ex.guaranteeFeeRate);
-      if (ex.guaranteeFeeFixed) setGuaranteeFeeFixed(ex.guaranteeFeeFixed);
-
-      // 入居可能日
-      if (ex.availableDate) {
-        setMoveInDate(ex.availableDate);
-      }
-
-      // 図面に記載があった場合のみON
-      if (ex.insuranceFee != null) { setHasInsurance(true); setInsuranceFee(ex.insuranceFee); }
-      if (ex.keyExchangeFee != null) { setHasKeyExchange(true); setKeyExchangeFee(ex.keyExchangeFee); }
-      if (ex.cleaningFee != null) { setHasCleaning(true); setCleaningFee(ex.cleaningFee); }
-      if (ex.supportFee != null) { setHasSupport(true); setSupportFee(ex.supportFee); }
-      if (ex.hasDisinfection) { setHasDisinfection(true); setShowDetail(true); }
-      if (ex.disinfectionFee) setDisinfectionFee(ex.disinfectionFee);
-      if (ex.hasContractFee) { setHasContractFee(true); setShowDetail(true); }
-      if (ex.contractFee) setContractFee(ex.contractFee);
-
-      // extraItemsを自動反映
-      if (ex.extraItems && ex.extraItems.length > 0) {
-        const newExtras = [defaultExtra(), defaultExtra(), defaultExtra()];
-        ex.extraItems.slice(0, 3).forEach((item, idx) => {
-          newExtras[idx] = { name: item.name, amount: String(item.amount), enabled: true };
-        });
-        setExtraItems(newExtras);
-        setShowDetail(true);
-      }
-
-      setAnalyzeSuccess(true);
-      setShowDetail(true);
+      const ex = await extractPropertyDataFromImage(base64, mimeType, envKey);
+      incrementUsage();
+      setRemaining(getRemainingCount());
+      applyExtracted(ex);
     } catch (err: any) {
       setError(err.message || "解析エラー");
-      setShowApiKeyInput(true);
     } finally {
       setIsAnalyzing(false);
     }
-  };
-
-  const saveApiKey = () => {
-    localStorage.setItem("gemini_api_key", apiKey);
-    setShowApiKeyInput(false);
-    const file = fileInputRef.current?.files?.[0];
-    if (file) analyzeImage(file);
   };
 
   // 敷金変更時にクリーニング連動
@@ -329,15 +282,24 @@ export const RentalCalculator = () => {
             <span className="bg-purple-100 text-purple-600 text-xs px-2 py-0.5 rounded-full font-bold">AI</span>
             募集図面から自動入力
           </h2>
-          {showApiKeyInput && (
+          {showUnlockInput && (
             <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-700 mb-2 font-medium">Gemini APIキーを入力</p>
+              <p className="text-xs text-amber-700 mb-2 font-medium">社内向け解除キーを入力</p>
               <div className="flex gap-2">
-                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
-                  placeholder="AIzaSy..." className="flex-1 border border-amber-200 rounded px-2 py-1.5 text-xs" />
-                <button onClick={saveApiKey} className="px-3 py-1.5 bg-amber-500 text-white rounded text-xs font-medium">保存</button>
+                <input type="password" value={unlockKeyInput} onChange={e => setUnlockKeyInput(e.target.value)}
+                  placeholder="解除キーを入力..." className="flex-1 border border-amber-200 rounded px-2 py-1.5 text-xs" />
+                <button onClick={async () => {
+                  const ok = await verifyUnlockKey(unlockKeyInput);
+                  if (ok) {
+                    setUnlocked(true);
+                    setRemaining(Infinity);
+                    setShowUnlockInput(false);
+                    setError("");
+                  } else {
+                    setError("解除キーが正しくありません。");
+                  }
+                }} className="px-3 py-1.5 bg-amber-500 text-white rounded text-xs font-medium">適用</button>
               </div>
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-600 underline mt-1 block">Google AI Studioで取得</a>
             </div>
           )}
           <div onClick={() => fileInputRef.current?.click()}
@@ -393,11 +355,23 @@ export const RentalCalculator = () => {
 
           {analyzeSuccess && <p className="text-xs text-green-600 mt-2 font-medium">✓ 物件情報を自動入力しました。内容を確認してください。</p>}
           {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-          <div className="mt-2 flex items-center gap-3">
-            <button onClick={() => setShowApiKeyInput(!showApiKeyInput)} className="text-xs text-purple-500 underline">
-              {apiKey ? "APIキーを変更" : "APIキーを設定"}
-            </button>
-            {apiKey && <span className="text-xs text-gray-400">設定済み ✓</span>}
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {unlocked ? (
+                <span className="text-xs text-green-600 font-medium">✓ 社内向け（無制限）</span>
+              ) : (
+                <span className="text-xs text-gray-400">本日の残り回数: {remaining === Infinity ? "∞" : remaining}/5回</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {unlocked ? (
+                <button onClick={() => { removeUnlockToken(); setUnlocked(false); setRemaining(getRemainingCount()); }}
+                  className="text-xs text-gray-400 underline">解除を取り消す</button>
+              ) : (
+                <button onClick={() => setShowUnlockInput(!showUnlockInput)}
+                  className="text-xs text-purple-500 underline">社内向け解除キー</button>
+              )}
+            </div>
           </div>
         </div>
 
