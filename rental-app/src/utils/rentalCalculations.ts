@@ -18,6 +18,8 @@ export interface InitialCostInput {
   keyExchangeFee: number;
   hasCleaning: boolean;
   cleaningFee: number;
+  hasAcCleaning: boolean;
+  acCleaningFee: number;
   hasSupport: boolean;
   supportFee: number;
   hasDisinfection: boolean;
@@ -121,15 +123,17 @@ export const calculateInitialCost = (input: InitialCostInput) => {
   const insuranceFee = input.hasInsurance ? input.insuranceFee : 0;
   const keyExchangeFee = input.hasKeyExchange ? input.keyExchangeFee : 0;
   const cleaningFee = input.hasCleaning ? input.cleaningFee : 0;
+  const acCleaningFee = input.hasAcCleaning ? input.acCleaningFee : 0;
   const supportFee = input.hasSupport ? input.supportFee : 0;
   const disinfectionFee = input.hasDisinfection ? input.disinfectionFee : 0;
   const contractFee = input.hasContractFee ? input.contractFee : 0;
   const extraTotal = input.extraItems.filter(e => e.enabled && e.name && e.amount > 0).reduce((s, e) => s + e.amount, 0);
 
   const contractTotal = deposit + keyMoney + agencyFee + guaranteeFee;
-  const optionTotal = insuranceFee + keyExchangeFee + cleaningFee + supportFee + disinfectionFee + contractFee + extraTotal;
+  const optionTotal = insuranceFee + keyExchangeFee + supportFee + disinfectionFee + contractFee + extraTotal;
+  const cleaningTotal = cleaningFee + acCleaningFee;
   const firstMonthTotal = prorationRent + prorationMgmt + rent + managementFee - rentFreeDiscount;
-  const total = contractTotal + optionTotal + firstMonthTotal;
+  const total = contractTotal + optionTotal + cleaningTotal + firstMonthTotal;
 
   const extraItems: Record<string, any> = {};
   input.extraItems.filter(e => e.enabled && e.name && e.amount > 0).forEach((e, i) => {
@@ -147,7 +151,8 @@ export const calculateInitialCost = (input: InitialCostInput) => {
       },
       ...(input.hasInsurance ? { insuranceFee: { label: "火災保険料", amount: insuranceFee, category: "option" } } : {}),
       ...(input.hasKeyExchange ? { keyExchangeFee: { label: "鍵交換費用", amount: keyExchangeFee, category: "option" } } : {}),
-      ...(input.hasCleaning ? { cleaningFee: { label: "退去時クリーニング", amount: cleaningFee, category: "option" } } : {}),
+      ...(input.hasCleaning ? { cleaningFee: { label: "退去時クリーニング", amount: cleaningFee, category: "cleaning" } } : {}),
+      ...(input.hasAcCleaning ? { acCleaningFee: { label: "エアコン洗浄", amount: acCleaningFee, category: "cleaning" } } : {}),
       ...(input.hasSupport ? { supportFee: { label: "24時間サポート", amount: supportFee, category: "option" } } : {}),
       ...(input.hasDisinfection ? { disinfectionFee: { label: "室内除菌抗菌", amount: disinfectionFee, category: "option" } } : {}),
       ...(input.hasContractFee ? { contractFee: { label: "契約事務手数料", amount: contractFee, category: "option" } } : {}),
@@ -158,7 +163,7 @@ export const calculateInitialCost = (input: InitialCostInput) => {
       ...(managementFee > 0 ? { nextMgmt: { label: "翌月分管理費", amount: managementFee, category: "firstMonth" } } : {}),
       ...(input.hasRentFree ? { rentFree: { label: "フリーレント割引", amount: -rentFreeDiscount, category: "firstMonth" } } : {}),
     },
-    subtotals: { contract: contractTotal, option: optionTotal, firstMonth: firstMonthTotal },
+    subtotals: { contract: contractTotal, option: optionTotal, cleaning: cleaningTotal, firstMonth: firstMonthTotal },
     prorationInfo,
     total,
   };
