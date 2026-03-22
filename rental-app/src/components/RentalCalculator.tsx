@@ -103,7 +103,23 @@ export const RentalCalculator = () => {
       if (ex.keyMoneyMonths != null) setKeyMoneyMonths(ex.keyMoneyMonths);
       if (ex.propertyName) setPropertyName(ex.propertyName);
       if (ex.roomNumber) setRoomNumber(ex.roomNumber);
-      if (ex.agencyFeeType) setAgencyFeeType(ex.agencyFeeType);
+      // AD判定 → 仲介手数料自動設定
+      if (ex.agencyFeeType === "0") {
+        // AD100%以上 → 無料
+        setAgencyFeeType("0");
+      } else if (ex.agencyFeeType == null && ex.adRate == null) {
+        // AD記載なし → 家賃で自社ルール自動判定
+        const rentNum = ex.rent ? parseFloat(ex.rent) : 0;
+        if (rentNum <= 118000) {
+          setAgencyFeeType("1.1");
+        } else if (rentNum <= 240000) {
+          setAgencyFeeType("118000");
+        } else {
+          setAgencyFeeType("0.55");
+        }
+      } else if (ex.agencyFeeType) {
+        setAgencyFeeType(ex.agencyFeeType);
+      }
       if (ex.customAgencyFee) setCustomAgencyFee(ex.customAgencyFee);
       if (ex.guaranteeFeeType) setGuaranteeFeeType(ex.guaranteeFeeType as "rate"|"fixed");
       if (ex.guaranteeFeeRate) setGuaranteeFeeRate(ex.guaranteeFeeRate);
