@@ -45,7 +45,7 @@ export const EstimateSheet = ({
     }
   };
 
-  const shareText = `この物件の初期費用、AIで概算してみた✨\n${propertyName ? propertyName + " " : ""}初期費用合計：${formatCurrency(result.total)}\nお部屋探しは xrooms.net`;
+  const shareText = `この物件の初期費用、AIで概算してみた✨\n${propertyName ? propertyName + " " : ""}初期費用合計：${formatCurrency(result.total ?? 0)}\nお部屋探しは xrooms.net`;
 
   const handleShare = async () => {
     // まずPNG生成
@@ -203,7 +203,7 @@ export const EstimateSheet = ({
                 <p className="text-xs text-blue-600 mt-0.5">契約開始日(仮)　{result.prorationInfo.startDate}〜</p>
               )}
             </div>
-            <p className="text-3xl font-bold text-blue-700">{formatCurrency(result.total)}</p>
+            <p className="text-3xl font-bold text-blue-700">{formatCurrency(result.total ?? 0)}</p>
           </div>
         </div>
 
@@ -218,7 +218,7 @@ export const EstimateSheet = ({
               <div>
                 <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-blue-50 mb-1">
                   <p className="text-xs font-bold text-blue-700">契約金 A項目（敷金・礼金・仲介手数料・保証会社）</p>
-                  <p className="text-sm font-bold text-blue-700">{formatCurrency(result.subtotals.contract)}</p>
+                  <p className="text-sm font-bold text-blue-700">{formatCurrency((result.subtotals?.contract ?? 0))}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg overflow-hidden">
                   {items.map((item: any, idx: number) => (
@@ -243,7 +243,7 @@ export const EstimateSheet = ({
               <div>
                 <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-purple-50 mb-1">
                   <p className="text-xs font-bold text-purple-700">契約金 B項目（火災保険・鍵交換代・24時間サポートほか）</p>
-                  <p className="text-sm font-bold text-purple-700">{formatCurrency(result.subtotals.option)}</p>
+                  <p className="text-sm font-bold text-purple-700">{formatCurrency((result.subtotals?.option ?? 0))}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg overflow-hidden">
                   {items.map((item: any, idx: number) => (
@@ -266,7 +266,7 @@ export const EstimateSheet = ({
               <div>
                 <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-orange-50 mb-1">
                   <p className="text-xs font-bold text-orange-700">契約金 C項目（退去時クリーニング代など）</p>
-                  <p className="text-sm font-bold text-orange-700">{formatCurrency(result.subtotals.cleaning)}</p>
+                  <p className="text-sm font-bold text-orange-700">{formatCurrency((result.subtotals?.cleaning ?? 0))}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg overflow-hidden">
                   {items.map((item: any, idx: number) => (
@@ -299,7 +299,7 @@ export const EstimateSheet = ({
               <div>
                 <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-green-50 mb-1">
                   <p className="text-xs font-bold text-green-700">契約時前家賃（初月賃料日割り＋翌月賃料１ヶ月分）</p>
-                  <p className="text-sm font-bold text-green-700">{formatCurrency(result.subtotals.firstMonth)}</p>
+                  <p className="text-sm font-bold text-green-700">{formatCurrency((result.subtotals?.firstMonth ?? 0))}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg overflow-hidden">
                   {items.map((item: any, idx: number) => (
@@ -337,7 +337,7 @@ export const EstimateSheet = ({
           {/* 合計ライン */}
           <div className="border-t-2 border-gray-800 pt-3 flex justify-between items-center">
             <p className="font-bold text-gray-900 text-sm">初期費用合計（概算）</p>
-            <p className="font-bold text-blue-700 text-2xl">{formatCurrency(result.total)}</p>
+            <p className="font-bold text-blue-700 text-2xl">{formatCurrency(result.total ?? 0)}</p>
           </div>
 
           <p className="text-xs text-gray-400 text-center pt-1">
