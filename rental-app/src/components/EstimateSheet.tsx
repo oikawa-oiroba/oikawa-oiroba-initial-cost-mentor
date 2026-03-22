@@ -6,6 +6,7 @@ interface EstimateSheetProps {
   monthlyResult: number | null;
   propertyName: string;
   roomNumber: string;
+  propertyAddress: string;
   propertyUrl: string;
   propertyImage: string | null;
   rent: string;
@@ -13,7 +14,7 @@ interface EstimateSheetProps {
 }
 
 export const EstimateSheet = ({
-  result, monthlyResult, propertyName, roomNumber, propertyUrl, propertyImage, rent, managementFee
+  result, monthlyResult, propertyName, roomNumber, propertyAddress, propertyUrl, propertyImage, rent, managementFee
 }: EstimateSheetProps) => {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [showFullImage, setShowFullImage] = useState(false);
@@ -72,7 +73,7 @@ export const EstimateSheet = ({
         <div className="bg-blue-700 px-6 py-4 text-white">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-lg font-bold">賃貸初期費用　見積書</h2>
+              <h2 className="text-lg font-bold">初期費用概算計算書</h2>
               <p className="text-blue-200 text-xs mt-0.5">作成日: {today}</p>
             </div>
             <p className="text-blue-200 text-xs">powered by XROOMS</p>
@@ -88,6 +89,7 @@ export const EstimateSheet = ({
             <div className="flex-1 min-w-0">
               <p className="font-bold text-gray-900 text-base">{propertyName || "（物件名未入力）"}</p>
               {roomNumber && <p className="text-sm text-gray-500">{roomNumber}号室</p>}
+              {propertyAddress && <p className="text-xs text-gray-500 mt-0.5">{propertyAddress}</p>}
               {propertyUrl && <p className="text-xs text-blue-500 truncate mt-0.5">{propertyUrl}</p>}
               <div className="flex gap-4 mt-1.5">
                 {rent && <span className="text-sm"><span className="text-gray-400">家賃</span> <span className="font-bold text-gray-800">{formatCurrency(parseFloat(rent))}</span></span>}
