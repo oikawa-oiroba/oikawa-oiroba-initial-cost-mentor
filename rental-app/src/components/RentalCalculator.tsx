@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { formatCurrency, calculateInitialCost, calculateMonthlyTotal, InitialCostInput, MonthlyInput, getDefaultMoveInDate } from "../utils/rentalCalculations";
 import { extractPropertyDataFromImage, fileToBase64 } from "../utils/geminiExtract";
+import { extractFromUrl } from "../utils/urlExtract";
 import { EstimateSheet } from "./EstimateSheet";
 
 const AGENCY_OPTIONS = [
@@ -62,6 +63,7 @@ export const RentalCalculator = () => {
   const [apiKey, setApiKey] = useState(localStorage.getItem("gemini_api_key") || "");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isFetchingUrl, setIsFetchingUrl] = useState(false);
   const [analyzeSuccess, setAnalyzeSuccess] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [monthlyResult, setMonthlyResult] = useState<number|null>(null);
@@ -72,7 +74,65 @@ export const RentalCalculator = () => {
     setExtraItems(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const applyExtracted = (ex: any) => {
+    if (ex.rent) setRent(ex.rent);
+    if (ex.managementFee) setManagementFee(ex.managementFee);
+    if (ex.depositMonths != null) {
+      setDepositMonths(ex.depositMonths);
+      if (ex.depositMonths === "0") { setHasCleaning(true); setCleaningFee("55000"); }
+    }
+    if (ex.keyMoneyMonths != null) setKeyMoneyMonths(ex.keyMoneyMonths);
+    if (ex.propertyName) setPropertyName(ex.propertyName);
+    if (ex.roomNumber) setRoomNumber(ex.roomNumber);
+    if (ex.agencyFeeType === "0") {
+      setAgencyFeeType("0");
+    } else if (ex.agencyFeeType == null && ex.adRate == null) {
+      const rentNum = ex.rent ? parseFloat(ex.rent) : 0;
+      if (rentNum <= 118000) setAgencyFeeType("1.1");
+      else if (rentNum <= 240000) setAgencyFeeType("118000");
+      else setAgencyFeeType("0.55");
+    } else if (ex.agencyFeeType) {
+      setAgencyFeeType(ex.agencyFeeType);
+    }
+    if (ex.customAgencyFee) setCustomAgencyFee(ex.customAgencyFee);
+    if (ex.guaranteeFeeType) setGuaranteeFeeType(ex.guaranteeFeeType as "rate"|"fixed");
+    if (ex.guaranteeFeeRate) setGuaranteeFeeRate(ex.guaranteeFeeRate);
+    if (ex.guaranteeFeeFixed) setGuaranteeFeeFixed(ex.guaranteeFeeFixed);
+    if (ex.availableDate) setMoveInDate(ex.availableDate);
+    if (ex.insuranceFee != null) { setHasInsurance(true); setInsuranceFee(ex.insuranceFee); }
+    if (ex.keyExchangeFee != null) { setHasKeyExchange(true); setKeyExchangeFee(ex.keyExchangeFee); }
+    if (ex.cleaningFee != null) { setHasCleaning(true); setCleaningFee(ex.cleaningFee); }
+    if (ex.supportFee != null) { setHasSupport(true); setSupportFee(ex.supportFee); }
+    if (ex.hasDisinfection) { setHasDisinfection(true); setShowDetail(true); }
+    if (ex.disinfectionFee) setDisinfectionFee(ex.disinfectionFee);
+    if (ex.hasContractFee) { setHasContractFee(true); setShowDetail(true); }
+    if (ex.contractFee) setContractFee(ex.contractFee);
+    if (ex.extraItems && ex.extraItems.length > 0) {
+      const newExtras = [defaultExtra(), defaultExtra(), defaultExtra()];
+      ex.extraItems.slice(0, 3).forEach((item: any, idx: number) => {
+        newExtras[idx] = { name: item.name, amount: String(item.amount), enabled: true };
+      });
+      setExtraItems(newExtras);
+      setShowDetail(true);
+    }
+    setAnalyzeSuccess(true);
+    setShowDetail(true);
+  };
+
+  const handleFetchUrl = async () => {
+    if (!propertyUrl) return;
+    setIsFetchingUrl(true);
+    setError("");
+    setAnalyzeSuccess(false);
+    try {
+      const ex = await extractFromUrl(propertyUrl);
+      applyExtracted(ex);
+    } catch (err: any) {
+      setError(err.message || "URL取得エラー");
+    } finally {
+      setIsFetchingUrl(false);
+    }
+  };
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -300,6 +360,33 @@ export const RentalCalculator = () => {
             )}
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+
+          {/* URL取得 */}
+          <div className="mt-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex-1 h-px bg-gray-100"></div>
+              <span className="text-xs text-gray-400 whitespace-nowrap">または URL から取得</span>
+              <div className="flex-1 h-px bg-gray-100"></div>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={propertyUrl}
+                onChange={e => setPropertyUrl(e.target.value)}
+                placeholder="https://suumo.jp/chintai/..."
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              />
+              <button
+                onClick={handleFetchUrl}
+                disabled={isFetchingUrl || !propertyUrl}
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+              >
+                {isFetchingUrl ? "取得中..." : "取得"}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">アットホーム（abm.athome.jp）・Nomad Cloud対応</p>
+          </div>
+
           {analyzeSuccess && <p className="text-xs text-green-600 mt-2 font-medium">✓ 物件情報を自動入力しました。内容を確認してください。</p>}
           {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
           <div className="mt-2 flex items-center gap-3">
@@ -313,14 +400,12 @@ export const RentalCalculator = () => {
         {/* 物件情報 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">物件情報（任意）</h3>
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="grid grid-cols-2 gap-3">
             <div><label className={lc}>物件名</label>
               <input className={ic} placeholder="〇〇マンション" value={propertyName} onChange={e => setPropertyName(e.target.value)} /></div>
             <div><label className={lc}>部屋番号</label>
               <input className={ic} placeholder="101" value={roomNumber} onChange={e => setRoomNumber(e.target.value)} /></div>
           </div>
-          <div><label className={lc}>物件URL</label>
-            <input className={ic} placeholder="https://suumo.jp/..." value={propertyUrl} onChange={e => setPropertyUrl(e.target.value)} /></div>
         </div>
 
         {/* 基本情報 */}
