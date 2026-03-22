@@ -12,14 +12,19 @@ export interface InitialCostInput {
   guaranteeFeeType: string;
   guaranteeFeeRate?: number;
   guaranteeFeeFixed?: number;
+  hasInsurance: boolean;
   insuranceFee: number;
+  hasKeyExchange: boolean;
   keyExchangeFee: number;
+  hasCleaning: boolean;
   cleaningFee: number;
+  hasSupport: boolean;
   supportFee: number;
   hasDisinfection: boolean;
   disinfectionFee: number;
   hasContractFee: boolean;
   contractFee: number;
+  extraItems: Array<{ name: string; amount: number; enabled: boolean }>;
   moveInDate: string;
   hasRentFree: boolean;
   rentFreeMonths: number;
@@ -38,7 +43,6 @@ export interface MonthlyInput {
 export interface ProrationInfo {
   prorationRent: number;
   prorationMgmt: number;
-  moveInDate: string;
   daysInMonth: number;
   remainingDays: number;
   startDate: string;
@@ -47,11 +51,22 @@ export interface ProrationInfo {
   nextMonthEnd: string;
 }
 
+export const getDefaultMoveInDate = (): string => {
+  const today = new Date();
+  const target = new Date(today);
+  target.setDate(today.getDate() + 21);
+  // 次の土曜日に調整 (0=日, 6=土)
+  const day = target.getDay();
+  const daysToSat = day === 6 ? 0 : (6 - day);
+  target.setDate(target.getDate() + daysToSat);
+  return target.toISOString().split('T')[0];
+};
+
 export const calculateAgencyFee = (rent: number, type: string, customAmount?: number): number => {
   if (type === "0") return 0;
   if (type === "1.1") return Math.floor(rent * 1.1);
   if (type === "0.55") return Math.floor(rent * 0.5 * 1.1);
-  if (type === "118000") return Math.floor(118000 * 1.1); // 税別118,000円 → 税込
+  if (type === "118000") return Math.floor(118000 * 1.1);
   if (type === "custom" && customAmount) return customAmount;
   return 0;
 };
@@ -65,14 +80,18 @@ export const calculateProration = (rent: number, managementFee: number, moveInDa
   const remainingDays = daysInMonth - day + 1;
   const prorationRent = Math.floor((rent / daysInMonth) * remainingDays);
   const prorationMgmt = Math.floor((managementFee / daysInMonth) * remainingDays);
-
   const pad = (n: number) => String(n).padStart(2, '0');
-  const startDate = `${month + 1}/${pad(day)}`;
-  const endDate = `${month + 1}/${pad(daysInMonth)}`;
-  const nextMonthStart = `${month + 2 > 12 ? 1 : month + 2}/01`;
-  const nextMonthEnd = `${month + 2 > 12 ? 1 : month + 2}/${pad(new Date(year, month + 2, 0).getDate())}`;
-
-  return { prorationRent, prorationMgmt, moveInDate, daysInMonth, remainingDays, startDate, endDate, nextMonthStart, nextMonthEnd };
+  const m = month + 1;
+  const nm = month + 2 > 12 ? 1 : month + 2;
+  const ny = month + 2 > 12 ? year + 1 : year;
+  const nmDays = new Date(ny, nm, 0).getDate();
+  return {
+    prorationRent, prorationMgmt, daysInMonth, remainingDays,
+    startDate: `${m}/${pad(day)}`,
+    endDate: `${m}/${pad(daysInMonth)}`,
+    nextMonthStart: `${nm}/01`,
+    nextMonthEnd: `${nm}/${pad(nmDays)}`,
+  };
 };
 
 export const calculateInitialCost = (input: InitialCostInput) => {
@@ -91,7 +110,6 @@ export const calculateInitialCost = (input: InitialCostInput) => {
   let prorationRent = 0;
   let prorationMgmt = 0;
   let prorationInfo: ProrationInfo | null = null;
-
   if (input.moveInDate) {
     prorationInfo = calculateProration(rent, managementFee, input.moveInDate);
     prorationRent = prorationInfo.prorationRent;
@@ -100,29 +118,44 @@ export const calculateInitialCost = (input: InitialCostInput) => {
 
   const rentFreeDiscount = input.hasRentFree ? rent * input.rentFreeMonths : 0;
 
+  const insuranceFee = input.hasInsurance ? input.insuranceFee : 0;
+  const keyExchangeFee = input.hasKeyExchange ? input.keyExchangeFee : 0;
+  const cleaningFee = input.hasCleaning ? input.cleaningFee : 0;
+  const supportFee = input.hasSupport ? input.supportFee : 0;
+  const disinfectionFee = input.hasDisinfection ? input.disinfectionFee : 0;
+  const contractFee = input.hasContractFee ? input.contractFee : 0;
+  const extraTotal = input.extraItems.filter(e => e.enabled && e.name && e.amount > 0).reduce((s, e) => s + e.amount, 0);
+
   const contractTotal = deposit + keyMoney + agencyFee + guaranteeFee;
-  const optionTotal = input.insuranceFee + input.keyExchangeFee + input.cleaningFee + input.supportFee
-    + (input.hasDisinfection ? input.disinfectionFee : 0)
-    + (input.hasContractFee ? input.contractFee : 0);
+  const optionTotal = insuranceFee + keyExchangeFee + cleaningFee + supportFee + disinfectionFee + contractFee + extraTotal;
   const firstMonthTotal = prorationRent + prorationMgmt + rent + managementFee - rentFreeDiscount;
   const total = contractTotal + optionTotal + firstMonthTotal;
+
+  const extraItems: Record<string, any> = {};
+  input.extraItems.filter(e => e.enabled && e.name && e.amount > 0).forEach((e, i) => {
+    extraItems[`extra_${i}`] = { label: e.name, amount: e.amount, category: "option" };
+  });
 
   return {
     items: {
       deposit: { label: "敷金", amount: deposit, category: "contract" },
       keyMoney: { label: "礼金", amount: keyMoney, category: "contract" },
       agencyFee: { label: "仲介手数料", amount: agencyFee, category: "contract" },
-      guaranteeFee: { label: "保証会社費用（初回）", amount: guaranteeFee, category: "contract" },
-      insuranceFee: { label: "火災保険料", amount: input.insuranceFee, category: "option" },
-      keyExchangeFee: { label: "鍵交換費用", amount: input.keyExchangeFee, category: "option" },
-      cleaningFee: { label: "退去時クリーニング", amount: input.cleaningFee, category: "option" },
-      supportFee: { label: "24時間サポート", amount: input.supportFee, category: "option" },
-      ...(input.hasDisinfection ? { disinfectionFee: { label: "室内除菌抗菌", amount: input.disinfectionFee, category: "option" } } : {}),
-      ...(input.hasContractFee ? { contractFee: { label: "契約事務手数料", amount: input.contractFee, category: "option" } } : {}),
-      prorationRent: { label: `日割家賃（${prorationInfo ? `${prorationInfo.startDate}〜${prorationInfo.endDate} ${prorationInfo.remainingDays}日間/${prorationInfo.daysInMonth}日` : ""}）`, amount: prorationRent, category: "firstMonth" },
-      prorationMgmt: { label: "日割管理費", amount: prorationMgmt, category: "firstMonth" },
+      guaranteeFee: {
+        label: "保証会社費用（初回）" + (input.guaranteeFeeType === "rate" && input.guaranteeFeeRate ? ` ${input.guaranteeFeeRate}%` : ""),
+        amount: guaranteeFee, category: "contract"
+      },
+      ...(input.hasInsurance ? { insuranceFee: { label: "火災保険料", amount: insuranceFee, category: "option" } } : {}),
+      ...(input.hasKeyExchange ? { keyExchangeFee: { label: "鍵交換費用", amount: keyExchangeFee, category: "option" } } : {}),
+      ...(input.hasCleaning ? { cleaningFee: { label: "退去時クリーニング", amount: cleaningFee, category: "option" } } : {}),
+      ...(input.hasSupport ? { supportFee: { label: "24時間サポート", amount: supportFee, category: "option" } } : {}),
+      ...(input.hasDisinfection ? { disinfectionFee: { label: "室内除菌抗菌", amount: disinfectionFee, category: "option" } } : {}),
+      ...(input.hasContractFee ? { contractFee: { label: "契約事務手数料", amount: contractFee, category: "option" } } : {}),
+      ...extraItems,
+      ...(prorationRent > 0 ? { prorationRent: { label: `日割家賃（${prorationInfo ? `${prorationInfo.startDate}〜${prorationInfo.endDate} ${prorationInfo.remainingDays}日間/${prorationInfo.daysInMonth}日` : ""}）`, amount: prorationRent, category: "firstMonth" } } : {}),
+      ...(prorationMgmt > 0 ? { prorationMgmt: { label: "日割管理費", amount: prorationMgmt, category: "firstMonth" } } : {}),
       nextRent: { label: `翌月分家賃（${prorationInfo ? `${prorationInfo.nextMonthStart}〜${prorationInfo.nextMonthEnd}` : ""}）`, amount: rent, category: "firstMonth" },
-      nextMgmt: { label: "翌月分管理費", amount: managementFee, category: "firstMonth" },
+      ...(managementFee > 0 ? { nextMgmt: { label: "翌月分管理費", amount: managementFee, category: "firstMonth" } } : {}),
       ...(input.hasRentFree ? { rentFree: { label: "フリーレント割引", amount: -rentFreeDiscount, category: "firstMonth" } } : {}),
     },
     subtotals: { contract: contractTotal, option: optionTotal, firstMonth: firstMonthTotal },
@@ -132,11 +165,8 @@ export const calculateInitialCost = (input: InitialCostInput) => {
 };
 
 export const calculateMonthlyTotal = (rent: number, managementFee: number, monthly: MonthlyInput): number => {
-  let guaranteeMonthly = 0;
-  if (monthly.guaranteeMonthlyRate > 0) {
-    guaranteeMonthly = Math.floor((rent + managementFee) * (monthly.guaranteeMonthlyRate / 100));
-  } else {
-    guaranteeMonthly = monthly.guaranteeMonthlyFixed;
-  }
+  let guaranteeMonthly = monthly.guaranteeMonthlyRate > 0
+    ? Math.floor((rent + managementFee) * (monthly.guaranteeMonthlyRate / 100))
+    : monthly.guaranteeMonthlyFixed;
   return rent + managementFee + guaranteeMonthly + monthly.insuranceMonthly + monthly.supportMonthly + monthly.townFee + monthly.otherMonthlyFee;
 };
