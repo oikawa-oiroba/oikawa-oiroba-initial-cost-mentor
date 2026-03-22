@@ -41,4 +41,15 @@ export const extractPropertyDataFromImage = async (
   "118000"=118000円固定
   "0"=無料・AD物件・仲介手数料なし
   "custom"=上記以外の固定金額
-- customA
+- customAgencyFee: agencyFeeTypeがcustomの場合の税込金額（数値のみ）
+- guaranteeFeeType: 保証会社費用の種類 "rate"=料率指定 "fixed"=固定金額
+- guaranteeFeeRate: 保証料が料率の場合の％（数値のみ。例:50）
+- guaranteeFeeFixed: 保証料が固定金額の場合の円（数値のみ）
+- insuranceFee: 火災保険料（円、数値のみ。記載なければ20000）
+- keyExchangeFee: 鍵交換費用（円、数値のみ。記載なければ27500）
+- cleaningFee: 退去時クリーニング費用（円、数値のみ。記載なければ55000）
+- supportFee: 24時間サポート・緊急駆けつけサービスなど（円、数値のみ。記載なければ16500）
+- hasDisinfection: 室内除菌・抗菌施工の記載があればtrue
+- disinfectionFee: 室内除菌費用（円、数値のみ）
+- hasContractFee: 契約事務手数料の記載があればtrue
+- contractFee: 契約事務手数料（円、数
