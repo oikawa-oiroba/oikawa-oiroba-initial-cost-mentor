@@ -6,6 +6,18 @@ export interface ExtractedPropertyData {
   propertyName?: string;
   roomNumber?: string;
   agencyFeeType?: string;
+  customAgencyFee?: string;
+  guaranteeFeeType?: string;
+  guaranteeFeeRate?: string;
+  guaranteeFeeFixed?: string;
+  insuranceFee?: string;
+  keyExchangeFee?: string;
+  cleaningFee?: string;
+  supportFee?: string;
+  hasDisinfection?: boolean;
+  disinfectionFee?: string;
+  hasContractFee?: boolean;
+  contractFee?: string;
 }
 
 export const extractPropertyDataFromImage = async (
@@ -13,73 +25,20 @@ export const extractPropertyDataFromImage = async (
   mimeType: string,
   apiKey: string
 ): Promise<ExtractedPropertyData> => {
-  const prompt = `この不動産の募集図面から以下の情報を抽出してください。JSONのみで回答してください（説明文不要）。
+  const prompt = `あなたは不動産の募集図面から情報を抽出する専門家です。
+以下の募集図面から情報を読み取り、JSONのみで回答してください。前置きや説明は不要です。
 
-抽出項目：
-- rent: 家賃（円、数値のみ。例: 80000）
+【抽出項目】
+- rent: 家賃（円、数値のみ）
 - managementFee: 管理費・共益費（円、数値のみ。なければ0）
-- depositMonths: 敷金（何ヶ月分か数値のみ。例: 1 または 2。なければ0）
-- keyMoneyMonths: 礼金（何ヶ月分か数値のみ。例: 1 または 2。なければ0）
+- depositMonths: 敷金（ヶ月数の数値のみ。「なし」「0ヶ月」なら0）
+- keyMoneyMonths: 礼金（ヶ月数の数値のみ。「なし」「0ヶ月」なら0）
 - propertyName: 物件名（建物名）
 - roomNumber: 部屋番号
-- agencyFeeType: 仲介手数料（"1.1"=1ヶ月+税, "0.55"=0.5ヶ月+税, "0"=なし）
-
-見つからない項目はnullにしてください。必ずJSONのみで返してください。`;
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: base64Image } }
-          ]
-        }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
-      })
-    }
-  );
-
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    const msg = errData?.error?.message || `HTTP ${response.status}`;
-    throw new Error(msg);
-  }
-
-  const data = await response.json();
-  // thinking modelはparts配列にtextとthoughtが混在するため全partsのtextを結合
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  const text = parts.map((p: any) => p.text || "").join("");
-  const jsonMatch = text.replace(/```json\n?/g, "").replace(/```/g, "").match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    console.error("Response text:", text);
-    throw new Error("JSONが見つかりません: " + text.slice(0, 100));
-  }
-  const parsed = JSON.parse(jsonMatch[0]);
-
-  return {
-    rent: parsed.rent ? String(parsed.rent) : undefined,
-    managementFee: parsed.managementFee ? String(parsed.managementFee) : undefined,
-    depositMonths: parsed.depositMonths != null ? String(parsed.depositMonths) : undefined,
-    keyMoneyMonths: parsed.keyMoneyMonths != null ? String(parsed.keyMoneyMonths) : undefined,
-    propertyName: parsed.propertyName || undefined,
-    roomNumber: parsed.roomNumber || undefined,
-    agencyFeeType: parsed.agencyFeeType || undefined,
-  };
-};
-
-export const fileToBase64 = (file: File): Promise<{ base64: string; mimeType: string }> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(",")[1];
-      resolve({ base64, mimeType: file.type });
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
+- agencyFeeType: 仲介手数料の種類
+  "1.1"=賃料1ヶ月+消費税
+  "0.55"=賃料0.5ヶ月+消費税
+  "118000"=118000円固定
+  "0"=無料・AD物件・仲介手数料なし
+  "custom"=上記以外の固定金額
+- customA
