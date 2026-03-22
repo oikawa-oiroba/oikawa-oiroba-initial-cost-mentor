@@ -26,11 +26,12 @@ export interface ExtractedPropertyData {
   hasContractFee?: boolean;
   contractFee?: string;
   extraItems?: ExtraItem[];
-  // 毎月の費用
-  guaranteeMonthlyRate?: string;  // 保証会社月額%
-  insuranceMonthly?: string;      // 火災保険月割
-  supportMonthly?: string;        // 24時間サポート月額
+  guaranteeMonthlyRate?: string;
+  insuranceMonthly?: string;
+  supportMonthly?: string;
   adRate?: number;
+  // 根拠テキスト
+  evidence?: Record<string, string>;
 }
 
 export const extractPropertyDataFromImage = async (
@@ -67,8 +68,8 @@ export const extractPropertyDataFromImage = async (
     "contractFee: 契約事務手数料(円、数値のみ)",
     "extraItems: 上記以外の特殊費用の配列。SAT119・消火剤・光触媒・害虫駆除・その他オプションなど。各要素は{name:項目名, amount:円数値}形式",
     "guaranteeMonthlyRate: 保証会社の月額料率%(数値のみ。「月額1%」「毎月1%」などの記載があれば抽出。なければnull)",
-    "insuranceMonthly: 火災保険の月額(円、数値のみ。2年分など一括の場合は月割計算。なければnull)",
-    "supportMonthly: 24時間サポート・ホームメイト24の月額(円、数値のみ。記載があれば抽出。なければnull)",
+    "insuranceMonthly: 火災保険の月額(円、数値のみ。月額記載がある場合のみ。一括払いの場合はnull)",
+    "supportMonthly: 24時間サポート・ホームメイト24の月額(円、数値のみ。月額記載がある場合のみ。なければnull)",
     "",
     "【agencyFeeTypeの判定ルール - 重要】",
     "まずadRateを読み取る。AD・広告料・業務委託料・業務委託補助手数料という文言がある場合のみadRateを設定する。",
@@ -84,6 +85,8 @@ export const extractPropertyDataFromImage = async (
     "即入居可 → availableDate=今日の日付",
     "火災保険・鍵交換・クリーニング・サポートは図面に記載がある場合のみ金額を返す。記載なければnull",
     "見つからない項目はnull",
+    "",
+    "evidence: 各項目の根拠となった図面上の文言。{rent:\"1LDK 130,000円\", managementFee:\"共益費5,000円\", deposit:\"敷金1ヶ月\", keyMoney:\"礼金1ヶ月\", agencyFee:\"客付100%\", guarantee:\"保証会社加入必須(50〜80%)\", insurance:\"火災保険22,000円/2年\", keyExchange:\"鍵交換19,800円\", support:\"ホームメイスター24 16,500円\", availableDate:\"3月下旬入居可\"}のように抜き出した文言をそのまま入れる。見つからない項目は省略。",
     "",
     "JSONのみで返してください。説明文やマークダウンは不要です。"
   ];
@@ -160,6 +163,7 @@ export const extractPropertyDataFromImage = async (
     guaranteeMonthlyRate: parsed.guaranteeMonthlyRate != null ? String(parsed.guaranteeMonthlyRate) : undefined,
     insuranceMonthly: parsed.insuranceMonthly != null ? String(parsed.insuranceMonthly) : undefined,
     supportMonthly: parsed.supportMonthly != null ? String(parsed.supportMonthly) : undefined,
+    evidence: parsed.evidence && typeof parsed.evidence === "object" ? parsed.evidence : undefined,
   };
 };
 
