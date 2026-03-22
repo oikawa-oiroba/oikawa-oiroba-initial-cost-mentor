@@ -15,10 +15,19 @@ interface EstimateSheetProps {
   propertyImage: string | null;
   rent: string;
   managementFee: string;
+  exclusiveArea?: string;
+  showRenewal?: boolean;
+  renewalFeeRate?: string;
+  renewalAdminFeeRate?: string;
+  guaranteeRenewalFee?: string;
+  insuranceRenewalFee?: string;
+  supportRenewalFee?: string;
+  keyMoneyMonths?: string;
 }
 
 export const EstimateSheet = ({
-  result, monthlyResult, monthlyItems, evidence, warnings, depositMonths, propertyName, roomNumber, propertyAddress, propertyUrl, propertyImage, rent, managementFee
+  result, monthlyResult, monthlyItems, evidence, warnings, depositMonths, propertyName, roomNumber, propertyAddress, propertyUrl, propertyImage, rent, managementFee,
+  exclusiveArea, showRenewal, renewalFeeRate, renewalAdminFeeRate, guaranteeRenewalFee, insuranceRenewalFee, supportRenewalFee, keyMoneyMonths
 }: EstimateSheetProps) => {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [showFullImage, setShowFullImage] = useState(false);
@@ -133,7 +142,7 @@ export const EstimateSheet = ({
                 <div key={key} className="flex gap-2 text-xs">
                   <span className="text-gray-400 w-20 flex-shrink-0">{label}</span>
                   <span className={source === "default" ? "text-amber-600" : "text-gray-600"}>
-                    {source === "default" ? "└ 記載がなかったため概算にて計算" : `└ 「${text}」`}
+                    {source === "default" ? "└ 記載がなかったため未算入（別途費用が発生する場合があります。詳しくはお問い合わせください）" : `└ 「${text}」`}
                   </span>
                 </div>
               );
@@ -353,6 +362,101 @@ export const EstimateSheet = ({
           <p className="text-xs text-gray-400 text-center pt-1">
             ※この見積書はあくまで概算です。実際の金額は契約内容により異なります。
           </p>
+
+          {/* 参考セクション */}
+          {(monthlyResult !== null || showRenewal) && (
+            <div className="border-t border-gray-100 pt-4 space-y-3">
+              <p className="text-xs font-bold text-gray-500 text-center">&lt;参考&gt;</p>
+
+              {/* 毎月の費用 */}
+              {monthlyResult !== null && (
+                <div>
+                  <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-amber-50 mb-1">
+                    <p className="text-xs font-bold text-amber-700">毎月の費用</p>
+                    <p className="text-sm font-bold text-amber-700">{formatCurrency(monthlyResult)}/月</p>
+                  </div>
+                  {monthlyItems && monthlyItems.length > 0 && (
+                    <div className="border border-gray-100 rounded-lg overflow-hidden">
+                      {monthlyItems.map((item, idx) => (
+                        <div key={item.label} className={`flex justify-between px-3 py-2 text-xs ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                          <span className="text-gray-500">{item.label}</span>
+                          <span className="font-medium text-gray-800">{formatCurrency(item.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 px-1 mt-1">※家賃・管理費・保証会社月額などの合計</p>
+                </div>
+              )}
+
+              {/* 更新時の費用 */}
+              {showRenewal && (() => {
+                const rentNum = parseFloat(rent || "0");
+                const renewalFee = renewalFeeRate ? Math.floor(rentNum * parseFloat(renewalFeeRate)) : 0;
+                const renewalAdminFee = renewalAdminFeeRate ? Math.floor(rentNum * parseFloat(renewalAdminFeeRate) * 1.1) : 0;
+                const gRenewal = guaranteeRenewalFee ? parseFloat(guaranteeRenewalFee) : 0;
+                const insRenewal = insuranceRenewalFee ? parseFloat(insuranceRenewalFee) : 0;
+                const supRenewal = supportRenewalFee ? parseFloat(supportRenewalFee) : 0;
+                const renewalTotal = renewalFee + renewalAdminFee + gRenewal + insRenewal + supRenewal;
+                const items2 = [
+                  renewalFee > 0 && { label: `更新料（${renewalFeeRate}ヶ月分）`, amount: renewalFee },
+                  renewalAdminFee > 0 && { label: `更新事務手数料（${renewalAdminFeeRate}ヶ月税別）`, amount: renewalAdminFee },
+                  gRenewal > 0 && { label: "保証会社更新料", amount: gRenewal, note: "/年" },
+                  insRenewal > 0 && { label: "火災保険", amount: insRenewal, note: "/2年" },
+                  supRenewal > 0 && { label: "24時間サポート", amount: supRenewal, note: "/2年" },
+                ].filter(Boolean) as Array<{label:string;amount:number;note?:string}>;
+                return (
+                  <div>
+                    <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-indigo-50 mb-1">
+                      <p className="text-xs font-bold text-indigo-700">更新時の費用（2年毎）</p>
+                      <p className="text-sm font-bold text-indigo-700">{formatCurrency(renewalTotal)}</p>
+                    </div>
+                    <div className="border border-gray-100 rounded-lg overflow-hidden">
+                      {items2.map((item, idx) => (
+                        <div key={item.label} className={`flex justify-between px-3 py-2 text-xs ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                          <span className="text-gray-500">{item.label}{item.note && <span className="text-gray-400">{item.note}</span>}</span>
+                          <span className="font-medium text-gray-800">{formatCurrency(item.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* めやす賃料 */}
+          {(() => {
+            const rentNum = parseFloat(rent || "0");
+            const mgmtNum = parseFloat(managementFee || "0");
+            const keyMoneyAmt = rentNum * parseFloat(keyMoneyMonths || "0");
+            const renewalFeeAmt = renewalFeeRate ? Math.floor(rentNum * parseFloat(renewalFeeRate)) : 0;
+            // 4年間（48ヶ月）= 2回更新
+            const monthlyBase = rentNum + mgmtNum;
+            const totalCost = monthlyBase * 48 + keyMoneyAmt + renewalFeeAmt * 2;
+            const meyasuRent = Math.floor(totalCost / 48);
+            const meyasuPerSqm = exclusiveArea ? Math.floor(meyasuRent / parseFloat(exclusiveArea)) : null;
+            return (
+              <div className="border-t border-gray-100 pt-4 space-y-2">
+                <p className="text-xs font-bold text-gray-600">めやす賃料</p>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-700">めやす賃料</span>
+                    <span className="font-bold text-gray-900">{formatCurrency(meyasuRent)}/月</span>
+                  </div>
+                  {meyasuPerSqm !== null && (
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-sm text-gray-700">1㎡あたり</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(meyasuPerSqm)}/㎡</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  ※賃料・共益費・管理費・礼金・更新料を含み、賃料等条件の改定がないものと仮定して4年間賃借した場合の1ヶ月当たりの金額です。実際の総支払額と異なる場合があります。
+                </p>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
