@@ -1,3 +1,8 @@
+export interface ExtraItem {
+  name: string;
+  amount: number;
+}
+
 export interface ExtractedPropertyData {
   rent?: string;
   managementFee?: string;
@@ -10,6 +15,7 @@ export interface ExtractedPropertyData {
   guaranteeFeeType?: string;
   guaranteeFeeRate?: string;
   guaranteeFeeFixed?: string;
+  availableDate?: string;
   insuranceFee?: string;
   keyExchangeFee?: string;
   cleaningFee?: string;
@@ -18,6 +24,7 @@ export interface ExtractedPropertyData {
   disinfectionFee?: string;
   hasContractFee?: boolean;
   contractFee?: string;
+  extraItems?: ExtraItem[];
 }
 
 export const extractPropertyDataFromImage = async (
@@ -36,28 +43,31 @@ export const extractPropertyDataFromImage = async (
     "keyMoneyMonths: 礼金(ヶ月数の数値のみ。なしなら0)",
     "propertyName: 物件名(建物名)",
     "roomNumber: 部屋番号",
-    "agencyFeeType: 仲介手数料の種類(1.1=1ヶ月+消費税 / 0.55=0.5ヶ月+消費税 / 118000=118000円税別 / 0=無料・AD物件 / custom=その他)",
+    "agencyFeeType: 仲介手数料の種類(1.1=1ヶ月+消費税 / 0.55=0.5ヶ月+消費税 / 118000=118000円税別 / 0=無料・AD100%物件 / custom=その他固定)",
     "customAgencyFee: agencyFeeTypeがcustomの場合の税込金額(数値のみ)",
     "guaranteeFeeType: 保証会社費用の種類(rate=料率 / fixed=固定金額)",
     "guaranteeFeeRate: 料率の場合の%(数値のみ 例:50)",
     "guaranteeFeeFixed: 固定金額の場合の円(数値のみ)",
-    "insuranceFee: 火災保険料(円、数値のみ。記載なければ20000)",
-    "keyExchangeFee: 鍵交換費用(円、数値のみ。記載なければ27500)",
-    "cleaningFee: 退去時クリーニング費用(円、数値のみ。記載なければ55000)",
-    "supportFee: 24時間サポート・緊急駆けつけサービスなど(円、数値のみ。記載なければ16500)",
-    "hasDisinfection: 室内除菌・抗菌施工の記載があればtrue",
+    "availableDate: 入居可能日・入居時期(YYYY-MM-DD形式。即入居可・即時の場合は今日の日付。記載なければnull)",
+    "insuranceFee: 火災保険料(円、数値のみ。記載があれば金額、なければnull)",
+    "keyExchangeFee: 鍵交換費用(円、数値のみ。記載があれば金額、なければnull)",
+    "cleaningFee: 退去時クリーニング費用(円、数値のみ。記載があれば金額、なければnull)",
+    "supportFee: 24時間サポート・ホームメイト24・緊急駆けつけサービスなど(円、数値のみ。記載があれば金額、なければnull)",
+    "hasDisinfection: 室内除菌・抗菌施工・光触媒コーティングの記載があればtrue",
     "disinfectionFee: 室内除菌費用(円、数値のみ)",
     "hasContractFee: 契約事務手数料の記載があればtrue",
     "contractFee: 契約事務手数料(円、数値のみ)",
+    "extraItems: 上記以外の特殊費用の配列。SAT119・消火剤・光触媒・害虫駆除・その他オプションなど。各要素は{name:項目名, amount:円数値}形式",
     "",
     "読み取りルール:",
     "敷金なし・敷0 → depositMonths=0",
     "礼金なし・礼0 → keyMoneyMonths=0",
     "AD100%・仲介手数料無料 → agencyFeeType=0",
-    "AD50%など → agencyFeeType=1.1(借主負担)",
+    "AD50%など → agencyFeeType=1.1(借主側は1ヶ月負担)",
     "保証会社が固定額 → guaranteeFeeType=fixed",
     "保証会社が料率 → guaranteeFeeType=rate",
-    "SAT119・緊急サポート → supportFee",
+    "即入居可 → availableDate=今日の日付",
+    "火災保険・鍵交換・クリーニング・サポートは図面に記載がある場合のみ金額を返す。記載なければnull",
     "見つからない項目はnull",
     "",
     "JSONのみで返してください。説明文やマークダウンは不要です。"
@@ -93,17 +103,19 @@ export const extractPropertyDataFromImage = async (
     .map((p: any) => p.text || "")
     .join("");
 
-  const cleaned = text
-    .replace(/^[\s\S]*?(\{)/m, "$1")
-    .replace(/\}[\s\S]*$/, "}");
+  const jsonMatch = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("解析に失敗しました。もう一度お試しください。");
 
   let parsed: any = {};
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("解析に失敗しました。もう一度お試しください。");
-    parsed = JSON.parse(match[0]);
+  try { parsed = JSON.parse(jsonMatch[0]); } catch { throw new Error("解析に失敗しました。もう一度お試しください。"); }
+
+  const extraItems: ExtraItem[] = [];
+  if (Array.isArray(parsed.extraItems)) {
+    for (const item of parsed.extraItems) {
+      if (item.name && item.amount != null) {
+        extraItems.push({ name: String(item.name), amount: Number(item.amount) });
+      }
+    }
   }
 
   return {
@@ -118,6 +130,7 @@ export const extractPropertyDataFromImage = async (
     guaranteeFeeType: parsed.guaranteeFeeType || undefined,
     guaranteeFeeRate: parsed.guaranteeFeeRate != null ? String(parsed.guaranteeFeeRate) : undefined,
     guaranteeFeeFixed: parsed.guaranteeFeeFixed != null ? String(parsed.guaranteeFeeFixed) : undefined,
+    availableDate: parsed.availableDate || undefined,
     insuranceFee: parsed.insuranceFee != null ? String(parsed.insuranceFee) : undefined,
     keyExchangeFee: parsed.keyExchangeFee != null ? String(parsed.keyExchangeFee) : undefined,
     cleaningFee: parsed.cleaningFee != null ? String(parsed.cleaningFee) : undefined,
@@ -126,6 +139,7 @@ export const extractPropertyDataFromImage = async (
     disinfectionFee: parsed.disinfectionFee != null ? String(parsed.disinfectionFee) : undefined,
     hasContractFee: parsed.hasContractFee || false,
     contractFee: parsed.contractFee != null ? String(parsed.contractFee) : undefined,
+    extraItems: extraItems.length > 0 ? extraItems : undefined,
   };
 };
 
