@@ -58,6 +58,7 @@ export const RentalCalculator = () => {
   const [otherMonthlyFee, setOtherMonthlyFee] = useState("0");
   const [propertyName, setPropertyName] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
+  const [propertyAddress, setPropertyAddress] = useState("");
   const [propertyUrl, setPropertyUrl] = useState("");
   const [propertyImage, setPropertyImage] = useState<string|null>(null);
   const [apiKey, setApiKey] = useState(localStorage.getItem("gemini_api_key") || "");
@@ -84,6 +85,7 @@ export const RentalCalculator = () => {
     if (ex.keyMoneyMonths != null) setKeyMoneyMonths(ex.keyMoneyMonths);
     if (ex.propertyName) setPropertyName(ex.propertyName);
     if (ex.roomNumber) setRoomNumber(ex.roomNumber);
+    if (ex.propertyAddress) setPropertyAddress(ex.propertyAddress);
     if (ex.agencyFeeType === "0") {
       setAgencyFeeType("0");
     } else if (ex.agencyFeeType == null && ex.adRate == null) {
@@ -402,12 +404,14 @@ export const RentalCalculator = () => {
         {/* 物件情報 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">物件情報（任意）</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <div><label className={lc}>物件名</label>
               <input className={ic} placeholder="〇〇マンション" value={propertyName} onChange={e => setPropertyName(e.target.value)} /></div>
             <div><label className={lc}>部屋番号</label>
               <input className={ic} placeholder="101" value={roomNumber} onChange={e => setRoomNumber(e.target.value)} /></div>
           </div>
+          <div><label className={lc}>住所</label>
+            <input className={ic} placeholder="東京都渋谷区〇〇1-2-3" value={propertyAddress} onChange={e => setPropertyAddress(e.target.value)} /></div>
         </div>
 
         {/* 基本情報 */}
@@ -415,9 +419,9 @@ export const RentalCalculator = () => {
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">基本情報</h3>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div><label className={lc}>家賃（円）<span className="text-red-500">*</span></label>
-              <input className={ic} type="number" placeholder="80000" value={rent} onChange={e => setRent(e.target.value)} /></div>
+              <input className={ic} type="number" placeholder="160000" value={rent} onChange={e => setRent(e.target.value)} /></div>
             <div><label className={lc}>管理費・共益費（円）</label>
-              <input className={ic} type="number" placeholder="5000" value={managementFee} onChange={e => setManagementFee(e.target.value)} /></div>
+              <input className={ic} type="number" placeholder="12000" value={managementFee} onChange={e => setManagementFee(e.target.value)} /></div>
           </div>
           <div className="mb-3">
             <label className={lc}>保証会社（初回）</label>
@@ -592,6 +596,7 @@ export const RentalCalculator = () => {
             monthlyResult={monthlyResult}
             propertyName={propertyName}
             roomNumber={roomNumber}
+            propertyAddress={propertyAddress}
             propertyUrl={propertyUrl}
             propertyImage={propertyImage}
             rent={rent}
