@@ -67,11 +67,11 @@ export const RentalCalculator = () => {
   const [exclusiveArea, setExclusiveArea] = useState("");
   // 更新時費用
   const [showRenewal, setShowRenewal] = useState(false);
-  const [renewalFeeRate, setRenewalFeeRate] = useState("1");
-  const [renewalAdminFeeRate, setRenewalAdminFeeRate] = useState("0.5");
-  const [guaranteeRenewalFee, setGuaranteeRenewalFee] = useState("10000");
-  const [insuranceRenewalFee, setInsuranceRenewalFee] = useState("18000");
-  const [supportRenewalFee, setSupportRenewalFee] = useState("16500");
+  const [renewalFeeRate, setRenewalFeeRate] = useState("");
+  const [renewalAdminFeeRate, setRenewalAdminFeeRate] = useState("");
+  const [guaranteeRenewalFee, setGuaranteeRenewalFee] = useState("");
+  const [insuranceRenewalFee, setInsuranceRenewalFee] = useState("");
+  const [supportRenewalFee, setSupportRenewalFee] = useState("");
   const [propertyImage, setPropertyImage] = useState<string|null>(null);
   const [apiKey, setApiKey] = useState(localStorage.getItem("gemini_api_key") || "");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -644,27 +644,31 @@ export const RentalCalculator = () => {
           </button>
           {showRenewal && (
             <div className="px-5 pb-5 border-t border-gray-50 pt-4 space-y-3">
+              <p className="text-xs text-gray-400">空欄の場合は「記載がなかったため未算入」として表示されます</p>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600 w-36">更新料</span>
+                <span className={"text-sm w-36 " + (renewalFeeRate ? "text-gray-700" : "text-gray-400")}>更新料</span>
                 <input type="number" step="0.5" value={renewalFeeRate} onChange={e => setRenewalFeeRate(e.target.value)}
+                  placeholder="例: 1"
                   className="w-20 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
                 <span className="text-xs text-gray-400">ヶ月分</span>
                 {rent && renewalFeeRate && <span className="text-xs text-blue-600">≈ {new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY'}).format(Math.floor(parseFloat(rent)*parseFloat(renewalFeeRate)))}</span>}
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600 w-36">更新事務手数料</span>
+                <span className={"text-sm w-36 " + (renewalAdminFeeRate ? "text-gray-700" : "text-gray-400")}>更新事務手数料</span>
                 <input type="number" step="0.5" value={renewalAdminFeeRate} onChange={e => setRenewalAdminFeeRate(e.target.value)}
+                  placeholder="例: 0.5"
                   className="w-20 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
                 <span className="text-xs text-gray-400">ヶ月分(税別)</span>
               </div>
               {[
-                { label: "保証会社更新料", value: guaranteeRenewalFee, set: setGuaranteeRenewalFee, unit: "円/年" },
-                { label: "火災保険", value: insuranceRenewalFee, set: setInsuranceRenewalFee, unit: "円/2年" },
-                { label: "24時間サポート", value: supportRenewalFee, set: setSupportRenewalFee, unit: "円/2年" },
-              ].map(({ label, value, set, unit }) => (
+                { label: "保証会社更新料", value: guaranteeRenewalFee, set: setGuaranteeRenewalFee, unit: "円/年", placeholder: "例: 10000" },
+                { label: "火災保険", value: insuranceRenewalFee, set: setInsuranceRenewalFee, unit: "円/2年", placeholder: "例: 18000" },
+                { label: "24時間サポート", value: supportRenewalFee, set: setSupportRenewalFee, unit: "円/2年", placeholder: "例: 16500" },
+              ].map(({ label, value, set, unit, placeholder }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600 w-36">{label}</span>
+                  <span className={"text-sm w-36 " + (value ? "text-gray-700" : "text-gray-400")}>{label}</span>
                   <input type="number" value={value} onChange={e => set(e.target.value)}
+                    placeholder={placeholder}
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
                   <span className="text-xs text-gray-400">{unit}</span>
                 </div>
