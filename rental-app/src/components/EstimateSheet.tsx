@@ -56,7 +56,7 @@ export const EstimateSheet = ({
 
       // Web Share API（スマホ対応）
       if (navigator.share && navigator.canShare) {
-        canvas.toBlob(async (blob) => {
+        canvas.toBlob(async (blob: Blob | null) => {
           if (!blob) return;
           const file = new File([blob], `初期費用_${propertyName || "物件"}.png`, { type: "image/png" });
           if (navigator.canShare({ files: [file] })) {
