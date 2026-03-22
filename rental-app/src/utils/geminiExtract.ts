@@ -50,9 +50,14 @@ export const extractPropertyDataFromImage = async (
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+  // thinking modelはparts配列にtextとthoughtが混在するため全partsのtextを結合
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  const text = parts.map((p: any) => p.text || "").join("");
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("JSONが見つかりません");
+  if (!jsonMatch) {
+    console.error("Response text:", text);
+    throw new Error("JSONが見つかりません: " + text.slice(0, 100));
+  }
   const parsed = JSON.parse(jsonMatch[0]);
 
   return {
