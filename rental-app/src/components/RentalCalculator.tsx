@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { formatCurrency, calculateInitialCost, calculateMonthlyTotal, InitialCostInput, MonthlyInput, getDefaultMoveInDate } from "../utils/rentalCalculations";
+import { formatCurrency, calculateInitialCost, calculateMonthlyTotal, InitialCostInput, MonthlyInput, getDefaultMoveInDate, ensureFutureDate } from "../utils/rentalCalculations";
 import { extractPropertyDataFromImage, fileToBase64 } from "../utils/geminiExtract";
 import { extractFromUrl } from "../utils/urlExtract";
 import { canUseApi, incrementUsage, getRemainingCount, isUnlocked, verifyUnlockKey, removeUnlockToken } from "../utils/rateLimit";
@@ -40,6 +40,7 @@ export const RentalCalculator = () => {
   const [acCleaningFee, setAcCleaningFee] = useState("0");
   const [hasSupport, setHasSupport] = useState(false);
   const [supportFee, setSupportFee] = useState("16500");
+  const [supportFeeName, setSupportFeeName] = useState("24時間サポート");
   const [hasDisinfection, setHasDisinfection] = useState(false);
   const [disinfectionFee, setDisinfectionFee] = useState("16500");
   const [hasContractFee, setHasContractFee] = useState(false);
@@ -131,12 +132,13 @@ export const RentalCalculator = () => {
       hasMonthly = true;
     }
     if (hasMonthly) setShowMonthly(true);
-    if (ex.availableDate) setMoveInDate(ex.availableDate);
+    if (ex.availableDate) setMoveInDate(ensureFutureDate(ex.availableDate));
     if (ex.insuranceFee != null) { setHasInsurance(true); setInsuranceFee(ex.insuranceFee); }
     if (ex.keyExchangeFee != null) { setHasKeyExchange(true); setKeyExchangeFee(ex.keyExchangeFee); }
     if (ex.cleaningFee != null) { setHasCleaning(true); setCleaningFee(ex.cleaningFee); }
     if (ex.acCleaningFee != null) { setHasAcCleaning(true); setAcCleaningFee(ex.acCleaningFee); }
     if (ex.supportFee != null) { setHasSupport(true); setSupportFee(ex.supportFee); }
+    if (ex.supportFeeName) setSupportFeeName(ex.supportFeeName);
     if (ex.hasDisinfection) { setHasDisinfection(true); setShowDetail(true); }
     if (ex.disinfectionFee) setDisinfectionFee(ex.disinfectionFee);
     if (ex.hasContractFee) { setHasContractFee(true); setShowDetail(true); }
@@ -238,6 +240,7 @@ export const RentalCalculator = () => {
       hasCleaning, cleaningFee: parseFloat(cleaningFee),
       hasAcCleaning, acCleaningFee: parseFloat(acCleaningFee),
       hasSupport, supportFee: parseFloat(supportFee),
+      supportFeeName,
       hasDisinfection, disinfectionFee: parseFloat(disinfectionFee),
       hasContractFee, contractFee: parseFloat(contractFee),
       extraItems: extraItems.map(e => ({ name: e.name, amount: parseFloat(e.amount || "0"), enabled: e.enabled })),
@@ -522,7 +525,7 @@ export const RentalCalculator = () => {
                   <FeeRow checked={hasKeyExchange} onCheck={setHasKeyExchange} label="鍵交換費用" value={keyExchangeFee} onChange={setKeyExchangeFee} defaultVal="27500" />
                   <FeeRow checked={hasCleaning} onCheck={v => { setHasCleaning(v); if (v && cleaningFee === "0") setCleaningFee("55000"); }} label="退去時クリーニング" value={cleaningFee} onChange={setCleaningFee} defaultVal="55000" />
                   <FeeRow checked={hasAcCleaning} onCheck={setHasAcCleaning} label="エアコン洗浄" value={acCleaningFee} onChange={setAcCleaningFee} defaultVal="16500" />
-                  <FeeRow checked={hasSupport} onCheck={setHasSupport} label="24時間サポート" value={supportFee} onChange={setSupportFee} defaultVal="16500" />
+                  <FeeRow checked={hasSupport} onCheck={setHasSupport} label={supportFeeName} value={supportFee} onChange={setSupportFee} defaultVal="16500" />
                   <FeeRow checked={hasDisinfection} onCheck={setHasDisinfection} label="室内除菌抗菌" value={disinfectionFee} onChange={setDisinfectionFee} defaultVal="16500" />
                   <FeeRow checked={hasContractFee} onCheck={setHasContractFee} label="契約事務手数料" value={contractFee} onChange={setContractFee} defaultVal="5500" />
 
