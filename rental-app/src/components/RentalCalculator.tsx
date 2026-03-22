@@ -64,6 +64,14 @@ export const RentalCalculator = () => {
   const [roomNumber, setRoomNumber] = useState("");
   const [propertyAddress, setPropertyAddress] = useState("");
   const [propertyUrl, setPropertyUrl] = useState("");
+  const [exclusiveArea, setExclusiveArea] = useState("");
+  // 更新時費用
+  const [showRenewal, setShowRenewal] = useState(false);
+  const [renewalFeeRate, setRenewalFeeRate] = useState("1");
+  const [renewalAdminFeeRate, setRenewalAdminFeeRate] = useState("0.5");
+  const [guaranteeRenewalFee, setGuaranteeRenewalFee] = useState("10000");
+  const [insuranceRenewalFee, setInsuranceRenewalFee] = useState("18000");
+  const [supportRenewalFee, setSupportRenewalFee] = useState("16500");
   const [propertyImage, setPropertyImage] = useState<string|null>(null);
   const [apiKey, setApiKey] = useState(localStorage.getItem("gemini_api_key") || "");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -155,6 +163,13 @@ export const RentalCalculator = () => {
     setShowDetail(true);
     if (ex.evidence) setEvidence(ex.evidence);
     if (ex.warnings) setWarnings(ex.warnings);
+    if (ex.exclusiveArea) setExclusiveArea(ex.exclusiveArea);
+    if (ex.renewalFeeRate) setRenewalFeeRate(ex.renewalFeeRate);
+    if (ex.renewalAdminFeeRate) setRenewalAdminFeeRate(ex.renewalAdminFeeRate);
+    if (ex.guaranteeRenewalFee) setGuaranteeRenewalFee(ex.guaranteeRenewalFee);
+    if (ex.insuranceRenewalFee) setInsuranceRenewalFee(ex.insuranceRenewalFee);
+    if (ex.supportRenewalFee) setSupportRenewalFee(ex.supportRenewalFee);
+    if (ex.renewalFeeRate || ex.guaranteeRenewalFee) setShowRenewal(true);
   };
 
   const handleFetchUrl = async () => {
@@ -431,6 +446,8 @@ export const RentalCalculator = () => {
           </div>
           <div><label className={lc}>住所</label>
             <input className={ic} placeholder="東京都渋谷区〇〇1-2-3" value={propertyAddress} onChange={e => setPropertyAddress(e.target.value)} /></div>
+          <div className="mt-3"><label className={lc}>専有面積（㎡）</label>
+            <input className={ic} type="number" placeholder="30.5" value={exclusiveArea} onChange={e => setExclusiveArea(e.target.value)} /></div>
         </div>
 
         {/* 基本情報 */}
@@ -616,6 +633,46 @@ export const RentalCalculator = () => {
           )}
         </div>
 
+        {/* 更新時の費用 */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <button onClick={() => setShowRenewal(!showRenewal)}
+            className="w-full flex items-center justify-between p-5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+            <span>更新時の費用（参考表示）</span>
+            <svg className={"w-5 h-5 text-gray-400 transition-transform " + (showRenewal ? "rotate-180" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          {showRenewal && (
+            <div className="px-5 pb-5 border-t border-gray-50 pt-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600 w-36">更新料</span>
+                <input type="number" step="0.5" value={renewalFeeRate} onChange={e => setRenewalFeeRate(e.target.value)}
+                  className="w-20 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
+                <span className="text-xs text-gray-400">ヶ月分</span>
+                {rent && renewalFeeRate && <span className="text-xs text-blue-600">≈ {new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY'}).format(Math.floor(parseFloat(rent)*parseFloat(renewalFeeRate)))}</span>}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600 w-36">更新事務手数料</span>
+                <input type="number" step="0.5" value={renewalAdminFeeRate} onChange={e => setRenewalAdminFeeRate(e.target.value)}
+                  className="w-20 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
+                <span className="text-xs text-gray-400">ヶ月分(税別)</span>
+              </div>
+              {[
+                { label: "保証会社更新料", value: guaranteeRenewalFee, set: setGuaranteeRenewalFee, unit: "円/年" },
+                { label: "火災保険", value: insuranceRenewalFee, set: setInsuranceRenewalFee, unit: "円/2年" },
+                { label: "24時間サポート", value: supportRenewalFee, set: setSupportRenewalFee, unit: "円/2年" },
+              ].map(({ label, value, set, unit }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600 w-36">{label}</span>
+                  <input type="number" value={value} onChange={e => set(e.target.value)}
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
+                  <span className="text-xs text-gray-400">{unit}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>}
 
         <button onClick={calculate}
@@ -638,6 +695,14 @@ export const RentalCalculator = () => {
             propertyImage={propertyImage}
             rent={rent}
             managementFee={managementFee}
+            exclusiveArea={exclusiveArea}
+            showRenewal={showRenewal}
+            renewalFeeRate={renewalFeeRate}
+            renewalAdminFeeRate={renewalAdminFeeRate}
+            guaranteeRenewalFee={guaranteeRenewalFee}
+            insuranceRenewalFee={insuranceRenewalFee}
+            supportRenewalFee={supportRenewalFee}
+            keyMoneyMonths={keyMoneyMonths}
           />
         )}
       </div>
