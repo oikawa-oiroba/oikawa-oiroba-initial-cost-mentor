@@ -26,4 +26,55 @@ export const extractPropertyDataFromImage = async (
 
 見つからない項目はnullにしてください。必ずJSONのみで返してください。`;
 
-  const response =
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: mimeType, data: base64Image } }
+          ]
+        }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    const msg = errData?.error?.message || `HTTP ${response.status}`;
+    throw new Error(msg);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("JSONが見つかりません");
+  const parsed = JSON.parse(jsonMatch[0]);
+
+  return {
+    rent: parsed.rent ? String(parsed.rent) : undefined,
+    managementFee: parsed.managementFee ? String(parsed.managementFee) : undefined,
+    depositMonths: parsed.depositMonths != null ? String(parsed.depositMonths) : undefined,
+    keyMoneyMonths: parsed.keyMoneyMonths != null ? String(parsed.keyMoneyMonths) : undefined,
+    propertyName: parsed.propertyName || undefined,
+    roomNumber: parsed.roomNumber || undefined,
+    agencyFeeType: parsed.agencyFeeType || undefined,
+  };
+};
+
+export const fileToBase64 = (file: File): Promise<{ base64: string; mimeType: string }> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      resolve({ base64, mimeType: file.type });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
