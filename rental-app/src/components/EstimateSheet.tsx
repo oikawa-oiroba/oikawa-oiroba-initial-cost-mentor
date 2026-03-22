@@ -5,7 +5,9 @@ interface EstimateSheetProps {
   result: any;
   monthlyResult: number | null;
   monthlyItems?: Array<{ label: string; amount: number }>;
-  evidence?: Record<string, string>;
+  evidence?: Record<string, any>;
+  warnings?: string[];
+  depositMonths?: string;
   propertyName: string;
   roomNumber: string;
   propertyAddress: string;
@@ -16,7 +18,7 @@ interface EstimateSheetProps {
 }
 
 export const EstimateSheet = ({
-  result, monthlyResult, monthlyItems, evidence, propertyName, roomNumber, propertyAddress, propertyUrl, propertyImage, rent, managementFee
+  result, monthlyResult, monthlyItems, evidence, warnings, depositMonths, propertyName, roomNumber, propertyAddress, propertyUrl, propertyImage, rent, managementFee
 }: EstimateSheetProps) => {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [showFullImage, setShowFullImage] = useState(false);
@@ -152,7 +154,16 @@ export const EstimateSheet = ({
             <div className="flex-1 min-w-0">
               <p className="font-bold text-gray-900 text-base">{propertyName || "（物件名未入力）"}</p>
               {roomNumber && <p className="text-sm text-gray-500">{roomNumber}号室</p>}
-              {propertyAddress && <p className="text-xs text-gray-500 mt-0.5">{propertyAddress}</p>}
+              {propertyAddress && (
+                <a href={"https://maps.google.com/?q=" + encodeURIComponent(propertyAddress)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-blue-500 mt-0.5 flex items-center gap-0.5 hover:underline">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  {propertyAddress}
+                </a>
+              )}
               {propertyUrl && <p className="text-xs text-blue-500 truncate mt-0.5">{propertyUrl}</p>}
               <div className="flex gap-4 mt-1.5">
                 {rent && <span className="text-sm"><span className="text-gray-400">家賃</span> <span className="font-bold text-gray-800">{formatCurrency(parseFloat(rent))}</span></span>}
@@ -246,10 +257,38 @@ export const EstimateSheet = ({
             );
           })()}
 
-          {/* 小計A+B */}
+          {/* 契約金C */}
+          {(() => {
+            const items = Object.values(result.items as Record<string, any>).filter((c: any) => c.category === "cleaning" && c.amount !== 0);
+            if (items.length === 0) return null;
+            const hasDeposit = depositMonths && parseFloat(depositMonths) >= 1;
+            return (
+              <div>
+                <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-orange-50 mb-1">
+                  <p className="text-xs font-bold text-orange-700">契約金 C項目（退去時クリーニング代など）</p>
+                  <p className="text-sm font-bold text-orange-700">{formatCurrency(result.subtotals.cleaning)}</p>
+                </div>
+                <div className="border border-gray-100 rounded-lg overflow-hidden">
+                  {items.map((item: any, idx: number) => (
+                    <div key={item.label} className={`flex justify-between px-3 py-2 text-xs ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                      <span className="text-gray-500 flex-1 pr-2">{item.label}</span>
+                      <span className="font-medium whitespace-nowrap text-gray-800">{formatCurrency(item.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+                {hasDeposit && (
+                  <p className="text-xs text-orange-600 mt-1 px-1">
+                    ※退去時支払いとなる場合があります。詳しくは担当者までお問い合わせください。
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 小計A+B+C */}
           <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-gray-100">
-            <p className="text-xs font-bold text-gray-700">小計（契約金 A項目 ＋ B項目）</p>
-            <p className="text-sm font-bold text-gray-800">{formatCurrency(result.subtotals.contract + result.subtotals.option)}</p>
+            <p className="text-xs font-bold text-gray-700">小計（契約金 A＋B＋C項目）</p>
+            <p className="text-sm font-bold text-gray-800">{formatCurrency(result.subtotals.contract + result.subtotals.option + (result.subtotals.cleaning || 0))}</p>
           </div>
 
           {/* 契約時前家賃 */}
