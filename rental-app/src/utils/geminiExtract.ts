@@ -10,6 +10,7 @@ export interface ExtractedPropertyData {
   keyMoneyMonths?: string;
   propertyName?: string;
   roomNumber?: string;
+  propertyAddress?: string;
   agencyFeeType?: string;
   customAgencyFee?: string;
   guaranteeFeeType?: string;
@@ -44,6 +45,7 @@ export const extractPropertyDataFromImage = async (
     "keyMoneyMonths: 礼金(ヶ月数の数値のみ。なしなら0)",
     "propertyName: 物件名(建物名)",
     "roomNumber: 部屋番号",
+    "propertyAddress: 所在地・住所(都道府県から番地まで)",
     "agencyFeeType: 仲介手数料の種類(後述のルールで判定)",
     "customAgencyFee: agencyFeeTypeがcustomの場合の税込金額(数値のみ)",
     "guaranteeFeeType: 保証会社費用の種類(rate=料率 / fixed=固定金額)",
@@ -131,6 +133,7 @@ export const extractPropertyDataFromImage = async (
     keyMoneyMonths: parsed.keyMoneyMonths != null ? String(parsed.keyMoneyMonths) : undefined,
     propertyName: parsed.propertyName || undefined,
     roomNumber: parsed.roomNumber || undefined,
+    propertyAddress: parsed.propertyAddress || undefined,
     agencyFeeType: parsed.agencyFeeType != null ? String(parsed.agencyFeeType) : undefined,
     customAgencyFee: parsed.customAgencyFee != null ? String(parsed.customAgencyFee) : undefined,
     guaranteeFeeType: parsed.guaranteeFeeType || undefined,
