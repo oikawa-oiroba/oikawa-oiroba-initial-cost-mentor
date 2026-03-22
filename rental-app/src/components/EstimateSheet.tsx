@@ -493,8 +493,8 @@ export const EstimateSheet = ({
 住所：${pAddr}
 家賃：${pRent}円
 申込フォームの発行をお願いいたします。`;
-              const lineBase = "https://lin.ee/fhtzVrp";
-              const toLine = (msg: string) => `${lineBase}?text=${encodeURIComponent(msg)}`;
+              const toLine = (msg: string) => `https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(msg)}`;
+
               return (
                 <>
                   {[
