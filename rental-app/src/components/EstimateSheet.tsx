@@ -110,7 +110,7 @@ export const EstimateSheet = ({
             </svg>
             計算根拠（図面より読み取り）
           </p>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {[
               { key: "rent", label: "家賃" },
               { key: "managementFee", label: "管理費" },
@@ -120,14 +120,24 @@ export const EstimateSheet = ({
               { key: "guarantee", label: "保証会社" },
               { key: "insurance", label: "火災保険" },
               { key: "keyExchange", label: "鍵交換" },
+              { key: "cleaning", label: "クリーニング" },
+              { key: "acCleaning", label: "エアコン洗浄" },
               { key: "support", label: "24hサポート" },
               { key: "availableDate", label: "入居可能日" },
-            ].filter(({ key }) => evidence[key]).map(({ key, label }) => (
-              <div key={key} className="flex gap-2 text-xs">
-                <span className="text-gray-400 w-20 flex-shrink-0">{label}</span>
-                <span className="text-gray-600">└ 「{evidence[key]}」</span>
-              </div>
-            ))}
+              { key: "disinfection", label: "除菌抗菌" },
+            ].filter(({ key }) => evidence[key]).map(({ key, label }) => {
+              const ev = evidence[key];
+              const text = typeof ev === "object" ? ev.text : String(ev);
+              const source = typeof ev === "object" ? ev.source : "detected";
+              return (
+                <div key={key} className="flex gap-2 text-xs">
+                  <span className="text-gray-400 w-20 flex-shrink-0">{label}</span>
+                  <span className={source === "default" ? "text-amber-600" : "text-gray-600"}>
+                    {source === "default" ? "└ 記載がなかったため概算にて計算" : `└ 「${text}」`}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -288,7 +298,7 @@ export const EstimateSheet = ({
           {/* 小計A+B+C */}
           <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-gray-100">
             <p className="text-xs font-bold text-gray-700">小計（契約金 A＋B＋C項目）</p>
-            <p className="text-sm font-bold text-gray-800">{formatCurrency((result.subtotals.contract ?? 0) + (result.subtotals.option ?? 0) + (result.subtotals.cleaning ?? 0))}</p>
+            <p className="text-sm font-bold text-gray-800">{formatCurrency((result.subtotals?.contract ?? 0) + (result.subtotals?.option ?? 0) + (result.subtotals?.cleaning ?? 0))}</p>
           </div>
 
           {/* 契約時前家賃 */}
