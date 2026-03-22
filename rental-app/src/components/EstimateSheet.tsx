@@ -332,27 +332,6 @@ export const EstimateSheet = ({
             );
           })()}
 
-          {/* 毎月の費用（内訳付き） */}
-          {monthlyResult !== null && (
-            <div>
-              <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-amber-50 mb-1">
-                <p className="text-xs font-bold text-amber-700">毎月の費用（参考）</p>
-                <p className="text-sm font-bold text-amber-700">{formatCurrency(monthlyResult)}/月</p>
-              </div>
-              {monthlyItems && monthlyItems.length > 0 && (
-                <div className="border border-gray-100 rounded-lg overflow-hidden">
-                  {monthlyItems.map((item, idx) => (
-                    <div key={item.label} className={`flex justify-between px-3 py-2 text-xs ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-                      <span className="text-gray-500">{item.label}</span>
-                      <span className="font-medium text-gray-800">{formatCurrency(item.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-gray-400 px-1 mt-1">※家賃・管理費・保証会社月額などの合計</p>
-            </div>
-          )}
-
           {/* 合計ライン */}
           <div className="border-t-2 border-gray-800 pt-3 flex justify-between items-center">
             <p className="font-bold text-gray-900 text-sm">初期費用合計（概算）</p>
@@ -398,13 +377,14 @@ export const EstimateSheet = ({
                 const insRenewal = insuranceRenewalFee ? parseFloat(insuranceRenewalFee) : 0;
                 const supRenewal = supportRenewalFee ? parseFloat(supportRenewalFee) : 0;
                 const renewalTotal = renewalFee + renewalAdminFee + gRenewal + insRenewal + supRenewal;
+                const naNote = "記載がなかったため未算入（別途費用が発生する場合があります）";
                 const items2 = [
-                  renewalFee > 0 && { label: `更新料（${renewalFeeRate}ヶ月分）`, amount: renewalFee },
-                  renewalAdminFee > 0 && { label: `更新事務手数料（${renewalAdminFeeRate}ヶ月税別）`, amount: renewalAdminFee },
-                  gRenewal > 0 && { label: "保証会社更新料", amount: gRenewal, note: "/年" },
-                  insRenewal > 0 && { label: "火災保険", amount: insRenewal, note: "/2年" },
-                  supRenewal > 0 && { label: "24時間サポート", amount: supRenewal, note: "/2年" },
-                ].filter(Boolean) as Array<{label:string;amount:number;note?:string}>;
+                  { label: `更新料（${renewalFeeRate}ヶ月分）`, amount: renewalFee, missing: renewalFee === 0 },
+                  { label: `更新事務手数料（${renewalAdminFeeRate}ヶ月税別）`, amount: renewalAdminFee, missing: renewalAdminFee === 0 },
+                  { label: "保証会社更新料", amount: gRenewal, note: "/年", missing: gRenewal === 0 },
+                  { label: "火災保険", amount: insRenewal, note: "/2年", missing: insRenewal === 0 },
+                  { label: "24時間サポート", amount: supRenewal, note: "/2年", missing: supRenewal === 0 },
+                ];
                 return (
                   <div>
                     <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-indigo-50 mb-1">
@@ -414,8 +394,11 @@ export const EstimateSheet = ({
                     <div className="border border-gray-100 rounded-lg overflow-hidden">
                       {items2.map((item, idx) => (
                         <div key={item.label} className={`flex justify-between px-3 py-2 text-xs ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
-                          <span className="text-gray-500">{item.label}{item.note && <span className="text-gray-400">{item.note}</span>}</span>
-                          <span className="font-medium text-gray-800">{formatCurrency(item.amount)}</span>
+                          <span className="text-gray-500 flex-1 pr-2">{item.label}{item.note && <span className="text-gray-400">{item.note}</span>}</span>
+                          {item.missing
+                            ? <span className="text-amber-600 text-right" style={{fontSize:"10px"}}>{naNote}</span>
+                            : <span className="font-medium text-gray-800 whitespace-nowrap">{formatCurrency(item.amount)}</span>
+                          }
                         </div>
                       ))}
                     </div>
