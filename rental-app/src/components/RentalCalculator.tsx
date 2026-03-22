@@ -52,7 +52,7 @@ export const RentalCalculator = () => {
   const [moveInDate, setMoveInDate] = useState(getDefaultMoveInDate());
   const [hasRentFree, setHasRentFree] = useState(false);
   const [rentFreeMonths, setRentFreeMonths] = useState("1");
-  const [showMonthly, setShowMonthly] = useState(false);
+  const [showMonthly, setShowMonthly] = useState(true);
   const [guaranteeMonthlyRate, setGuaranteeMonthlyRate] = useState("");
   const [guaranteeMonthlyFixed, setGuaranteeMonthlyFixed] = useState("");
   const [insuranceMonthly, setInsuranceMonthly] = useState("0");
