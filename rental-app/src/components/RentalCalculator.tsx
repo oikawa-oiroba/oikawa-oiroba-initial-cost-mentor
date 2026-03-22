@@ -226,11 +226,13 @@ export const RentalCalculator = () => {
 
   // 敷金変更時にクリーニング連動
   const handleDepositChange = (val: string) => {
+    if (val === "custom") { setDepositMonths("custom"); return; }
     setDepositMonths(val);
-    if (val === "0" && !hasCleaning) {
+    const num = parseFloat(val);
+    if (num === 0 && !hasCleaning) {
       setHasCleaning(true);
       setCleaningFee("55000");
-    } else if (val !== "0" && cleaningFee === "55000") {
+    } else if (num > 0 && cleaningFee === "55000") {
       setHasCleaning(false);
       setCleaningFee("0");
     }
@@ -513,14 +515,34 @@ export const RentalCalculator = () => {
                 <p className="text-xs text-gray-400 mt-1">※画像認識で入居可能日を自動設定。未記載の場合は3週間後の土曜日</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className={lc}>敷金</label>
-                  <select className={ic} value={depositMonths} onChange={e => handleDepositChange(e.target.value)}>
-                    {["0","1","2","3"].map(m => <option key={m} value={m}>{m === "0" ? "なし" : m + "ヶ月"}</option>)}
-                  </select></div>
-                <div><label className={lc}>礼金</label>
-                  <select className={ic} value={keyMoneyMonths} onChange={e => setKeyMoneyMonths(e.target.value)}>
-                    {["0","1","2","3"].map(m => <option key={m} value={m}>{m === "0" ? "なし" : m + "ヶ月"}</option>)}
-                  </select></div>
+                <div>
+                  <label className={lc}>敷金</label>
+                  <select className={ic} value={["0","0.5","1","1.5","2","2.5","3","custom"].includes(depositMonths) ? depositMonths : "custom"}
+                    onChange={e => handleDepositChange(e.target.value)}>
+                    {[{v:"0",l:"なし"},{v:"0.5",l:"0.5ヶ月"},{v:"1",l:"1ヶ月"},{v:"1.5",l:"1.5ヶ月"},{v:"2",l:"2ヶ月"},{v:"2.5",l:"2.5ヶ月"},{v:"3",l:"3ヶ月"},{v:"custom",l:"直接入力"}].map(o =>
+                      <option key={o.v} value={o.v}>{o.l}</option>
+                    )}
+                  </select>
+                  {(depositMonths === "custom" || !["0","0.5","1","1.5","2","2.5","3"].includes(depositMonths)) && (
+                    <input type="number" step="0.5" className={ic + " mt-1"} placeholder="例: 1.5"
+                      value={depositMonths === "custom" ? "" : depositMonths}
+                      onChange={e => handleDepositChange(e.target.value)} />
+                  )}
+                </div>
+                <div>
+                  <label className={lc}>礼金</label>
+                  <select className={ic} value={["0","0.5","1","1.5","2","2.5","3","custom"].includes(keyMoneyMonths) ? keyMoneyMonths : "custom"}
+                    onChange={e => setKeyMoneyMonths(e.target.value)}>
+                    {[{v:"0",l:"なし"},{v:"0.5",l:"0.5ヶ月"},{v:"1",l:"1ヶ月"},{v:"1.5",l:"1.5ヶ月"},{v:"2",l:"2ヶ月"},{v:"2.5",l:"2.5ヶ月"},{v:"3",l:"3ヶ月"},{v:"custom",l:"直接入力"}].map(o =>
+                      <option key={o.v} value={o.v}>{o.l}</option>
+                    )}
+                  </select>
+                  {(keyMoneyMonths === "custom" || !["0","0.5","1","1.5","2","2.5","3"].includes(keyMoneyMonths)) && (
+                    <input type="number" step="0.5" className={ic + " mt-1"} placeholder="例: 1.5"
+                      value={keyMoneyMonths === "custom" ? "" : keyMoneyMonths}
+                      onChange={e => setKeyMoneyMonths(e.target.value)} />
+                  )}
+                </div>
               </div>
               <div>
                 <label className="flex items-center gap-2 cursor-pointer mb-2">
