@@ -26,6 +26,10 @@ export interface ExtractedPropertyData {
   hasContractFee?: boolean;
   contractFee?: string;
   extraItems?: ExtraItem[];
+  // 毎月の費用
+  guaranteeMonthlyRate?: string;  // 保証会社月額%
+  insuranceMonthly?: string;      // 火災保険月割
+  supportMonthly?: string;        // 24時間サポート月額
   adRate?: number;
 }
 
@@ -62,6 +66,9 @@ export const extractPropertyDataFromImage = async (
     "hasContractFee: 契約事務手数料の記載があればtrue",
     "contractFee: 契約事務手数料(円、数値のみ)",
     "extraItems: 上記以外の特殊費用の配列。SAT119・消火剤・光触媒・害虫駆除・その他オプションなど。各要素は{name:項目名, amount:円数値}形式",
+    "guaranteeMonthlyRate: 保証会社の月額料率%(数値のみ。「月額1%」「毎月1%」などの記載があれば抽出。なければnull)",
+    "insuranceMonthly: 火災保険の月額(円、数値のみ。2年分など一括の場合は月割計算。なければnull)",
+    "supportMonthly: 24時間サポート・ホームメイト24の月額(円、数値のみ。記載があれば抽出。なければnull)",
     "",
     "【agencyFeeTypeの判定ルール - 重要】",
     "まずadRateを読み取る。AD・広告料・業務委託料・業務委託補助手数料という文言がある場合のみadRateを設定する。",
@@ -150,6 +157,9 @@ export const extractPropertyDataFromImage = async (
     hasContractFee: parsed.hasContractFee || false,
     contractFee: parsed.contractFee != null ? String(parsed.contractFee) : undefined,
     extraItems: extraItems.length > 0 ? extraItems : undefined,
+    guaranteeMonthlyRate: parsed.guaranteeMonthlyRate != null ? String(parsed.guaranteeMonthlyRate) : undefined,
+    insuranceMonthly: parsed.insuranceMonthly != null ? String(parsed.insuranceMonthly) : undefined,
+    supportMonthly: parsed.supportMonthly != null ? String(parsed.supportMonthly) : undefined,
   };
 };
 
