@@ -64,53 +64,31 @@ export const EstimateSheet = ({
   const shareText = `この物件の初期費用、AIで概算してみた✨\n${propertyName ? propertyName + " " : ""}月額${formatCurrency(rentNum0 + mgmtNum0)}  初期費用は${formatCurrency(abTotal)}＋契約時前家賃でし✨\nお部屋探しは xrooms.net`;
 
   const handleShare = async () => {
-    // まずPNG生成
-    if (!sheetRef.current) return;
-    setIsSavingPng(true);
-    try {
-      const html2canvas = (await import("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js" as any)).default;
-      const canvas = await html2canvas(sheetRef.current, {
-        scale: 2, useCORS: true, backgroundColor: "#ffffff",
-      });
+    // iframeでも動作するシェア：LINEにテキストで送る＋PNG保存
+    const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`;
 
-      // Web Share API（スマホ対応）
-      if (navigator.share && navigator.canShare) {
-        canvas.toBlob(async (blob: Blob | null) => {
-          if (!blob) return;
-          const file = new File([blob], `初期費用_${propertyName || "物件"}.png`, { type: "image/png" });
-          if (navigator.canShare({ files: [file] })) {
-            try {
-              await navigator.share({
-                title: "初期費用概算計算書",
-                text: shareText,
-                files: [file],
-              });
-            } catch (e: any) {
-              if (e.name !== "AbortError") {
-                // フォールバック：テキストのみシェア
-                await navigator.share({ title: "初期費用概算計算書", text: shareText });
-              }
-            }
-          } else {
-            // ファイル添付非対応の場合はテキストのみ
-            await navigator.share({ title: "初期費用概算計算書", text: shareText });
-          }
-        }, "image/png");
-      } else {
-        // PCの場合：PNG保存してから案内
+    // PNG生成を試みる
+    if (sheetRef.current) {
+      setIsSavingPng(true);
+      try {
+        const html2canvas = (await import("https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js" as any)).default;
+        const canvas = await html2canvas(sheetRef.current, {
+          scale: 2, useCORS: true, backgroundColor: "#ffffff",
+        });
+        // PNG自動保存
         const link = document.createElement("a");
         link.download = `初期費用_${propertyName || "物件"}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
-        setTimeout(() => {
-          alert("画像を保存しました。\nLINEやSNSアプリから画像を添付して送ってください。\n\n" + shareText);
-        }, 500);
+      } catch {
+        // PNG生成失敗は無視
+      } finally {
+        setIsSavingPng(false);
       }
-    } catch {
-      alert("シェアに失敗しました。PNG保存ボタンをお使いください。");
-    } finally {
-      setIsSavingPng(false);
     }
+
+    // LINEを新しいタブで開く（iframeでも動作）
+    window.open(lineShareUrl, "_blank", "noopener,noreferrer");
   };
 
   const today = new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" });
