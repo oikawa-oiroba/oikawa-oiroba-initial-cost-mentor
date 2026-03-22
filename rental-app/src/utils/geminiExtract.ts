@@ -127,7 +127,8 @@ export const extractPropertyDataFromImage = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64Image } }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+        thinkingConfig: { thinkingBudget: 0 }
       })
     }
   );
@@ -139,7 +140,7 @@ export const extractPropertyDataFromImage = async (
 
   const data = await response.json();
   const parts = data.candidates?.[0]?.content?.parts || [];
-  const text = parts.filter((p: any) => !p.thought).map((p: any) => p.text || "").join("");
+  const text = parts.map((p: any) => p.text || "").join("");
   const jsonMatch = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("解析に失敗しました。もう一度お試しください。");
 
