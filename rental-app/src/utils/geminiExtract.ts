@@ -26,45 +26,71 @@ export const extractPropertyDataFromImage = async (
 
 見つからない項目はnullにしてください。必ずJSONのみで返してください。`;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: base64Image } }
-          ]
-        }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
-      })
-    }
-  );
+  const models = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+  ];
 
-  if (!response.ok) {
-    throw new Error(`Gemini API error: ${response.status}`);
+  let lastError = "";
+
+  for (const model of models) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inline_data: { mime_type: mimeType, data: base64Image } }
+              ]
+            }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+          })
+        }
+      );
+
+      if (response.status === 404) {
+        lastError = model + " not found";
+        continue;
+      }
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        lastError = errData?.error?.message || "HTTP " + response.status;
+        throw new Error(lastError);
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("JSONが見つかりません");
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      return {
+        rent: parsed.rent ? String(parsed.rent) : undefined,
+        managementFee: parsed.managementFee ? String(parsed.managementFee) : undefined,
+        depositMonths: parsed.depositMonths != null ? String(parsed.depositMonths) : undefined,
+        keyMoneyMonths: parsed.keyMoneyMonths != null ? String(parsed.keyMoneyMonths) : undefined,
+        propertyName: parsed.propertyName || undefined,
+        roomNumber: parsed.roomNumber || undefined,
+        agencyFeeType: parsed.agencyFeeType || undefined,
+      };
+
+    } catch (err: any) {
+      if (err.message?.includes("not found")) {
+        lastError = err.message;
+        continue;
+      }
+      throw err;
+    }
   }
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-  
-  // JSONブロックを抽出
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("JSONが見つかりません");
-  
-  const parsed = JSON.parse(jsonMatch[0]);
-  
-  return {
-    rent: parsed.rent ? String(parsed.rent) : undefined,
-    managementFee: parsed.managementFee ? String(parsed.managementFee) : undefined,
-    depositMonths: parsed.depositMonths != null ? String(parsed.depositMonths) : undefined,
-    keyMoneyMonths: parsed.keyMoneyMonths != null ? String(parsed.keyMoneyMonths) : undefined,
-    propertyName: parsed.propertyName || undefined,
-    roomNumber: parsed.roomNumber || undefined,
-    agencyFeeType: parsed.agencyFeeType || undefined,
-  };
+  throw new Error("APIキーを確認してください: " + lastError);
 };
 
 export const fileToBase64 = (file: File): Promise<{ base64: string; mimeType: string }> => {
