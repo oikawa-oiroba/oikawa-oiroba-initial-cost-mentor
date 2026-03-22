@@ -494,7 +494,6 @@ export const EstimateSheet = ({
 家賃：${pRent}円
 申込フォームの発行をお願いいたします。`;
               const toLine = (msg: string) => `https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(msg)}`;
-
               return (
                 <>
                   {[
@@ -584,8 +583,7 @@ export const EstimateSheet = ({
               </div>
             </div>
             <a
-              href={`https://line.me/R/oaMessage/%40xrooms/?
-${encodeURIComponent(`お世話になっております。以下の物件の内見を希望します。
+              href={`https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(`お世話になっております。以下の物件の内見を希望します。
 不明な諸費用についても管理会社に確認のうえ、改めてお見積書の作成をお願いいたします。
 物件名：${propertyName || "不明"} ${roomNumber ? roomNumber + "号室" : ""}
 住所：${propertyAddress || "不明"}
