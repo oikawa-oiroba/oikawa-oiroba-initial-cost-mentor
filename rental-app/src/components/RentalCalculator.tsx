@@ -36,6 +36,8 @@ export const RentalCalculator = () => {
   const [keyExchangeFee, setKeyExchangeFee] = useState("27500");
   const [hasCleaning, setHasCleaning] = useState(false);
   const [cleaningFee, setCleaningFee] = useState("0");
+  const [hasAcCleaning, setHasAcCleaning] = useState(false);
+  const [acCleaningFee, setAcCleaningFee] = useState("0");
   const [hasSupport, setHasSupport] = useState(false);
   const [supportFee, setSupportFee] = useState("16500");
   const [hasDisinfection, setHasDisinfection] = useState(false);
@@ -74,7 +76,8 @@ export const RentalCalculator = () => {
   const [result, setResult] = useState<any>(null);
   const [monthlyResult, setMonthlyResult] = useState<number|null>(null);
   const [monthlyItems, setMonthlyItems] = useState<Array<{label: string; amount: number}>>([]);
-  const [evidence, setEvidence] = useState<Record<string, string>>({});
+  const [evidence, setEvidence] = useState<Record<string, any>>({});
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -132,6 +135,7 @@ export const RentalCalculator = () => {
     if (ex.insuranceFee != null) { setHasInsurance(true); setInsuranceFee(ex.insuranceFee); }
     if (ex.keyExchangeFee != null) { setHasKeyExchange(true); setKeyExchangeFee(ex.keyExchangeFee); }
     if (ex.cleaningFee != null) { setHasCleaning(true); setCleaningFee(ex.cleaningFee); }
+    if (ex.acCleaningFee != null) { setHasAcCleaning(true); setAcCleaningFee(ex.acCleaningFee); }
     if (ex.supportFee != null) { setHasSupport(true); setSupportFee(ex.supportFee); }
     if (ex.hasDisinfection) { setHasDisinfection(true); setShowDetail(true); }
     if (ex.disinfectionFee) setDisinfectionFee(ex.disinfectionFee);
@@ -148,6 +152,7 @@ export const RentalCalculator = () => {
     setAnalyzeSuccess(true);
     setShowDetail(true);
     if (ex.evidence) setEvidence(ex.evidence);
+    if (ex.warnings) setWarnings(ex.warnings);
   };
 
   const handleFetchUrl = async () => {
@@ -231,6 +236,7 @@ export const RentalCalculator = () => {
       hasInsurance, insuranceFee: parseFloat(insuranceFee),
       hasKeyExchange, keyExchangeFee: parseFloat(keyExchangeFee),
       hasCleaning, cleaningFee: parseFloat(cleaningFee),
+      hasAcCleaning, acCleaningFee: parseFloat(acCleaningFee),
       hasSupport, supportFee: parseFloat(supportFee),
       hasDisinfection, disinfectionFee: parseFloat(disinfectionFee),
       hasContractFee, contractFee: parseFloat(contractFee),
@@ -514,7 +520,8 @@ export const RentalCalculator = () => {
                 <div className="space-y-2">
                   <FeeRow checked={hasInsurance} onCheck={setHasInsurance} label="火災保険料" value={insuranceFee} onChange={setInsuranceFee} defaultVal="20000" />
                   <FeeRow checked={hasKeyExchange} onCheck={setHasKeyExchange} label="鍵交換費用" value={keyExchangeFee} onChange={setKeyExchangeFee} defaultVal="27500" />
-                  <FeeRow checked={hasCleaning} onCheck={v => { setHasCleaning(v); if (v && cleaningFee === "0") setCleaningFee(depositMonths === "0" ? "55000" : "55000"); }} label="退去時クリーニング" value={cleaningFee} onChange={setCleaningFee} defaultVal="55000" />
+                  <FeeRow checked={hasCleaning} onCheck={v => { setHasCleaning(v); if (v && cleaningFee === "0") setCleaningFee("55000"); }} label="退去時クリーニング" value={cleaningFee} onChange={setCleaningFee} defaultVal="55000" />
+                  <FeeRow checked={hasAcCleaning} onCheck={setHasAcCleaning} label="エアコン洗浄" value={acCleaningFee} onChange={setAcCleaningFee} defaultVal="16500" />
                   <FeeRow checked={hasSupport} onCheck={setHasSupport} label="24時間サポート" value={supportFee} onChange={setSupportFee} defaultVal="16500" />
                   <FeeRow checked={hasDisinfection} onCheck={setHasDisinfection} label="室内除菌抗菌" value={disinfectionFee} onChange={setDisinfectionFee} defaultVal="16500" />
                   <FeeRow checked={hasContractFee} onCheck={setHasContractFee} label="契約事務手数料" value={contractFee} onChange={setContractFee} defaultVal="5500" />
@@ -619,6 +626,8 @@ export const RentalCalculator = () => {
             monthlyResult={monthlyResult}
             monthlyItems={monthlyItems}
             evidence={evidence}
+            warnings={warnings}
+            depositMonths={depositMonths}
             propertyName={propertyName}
             roomNumber={roomNumber}
             propertyAddress={propertyAddress}
