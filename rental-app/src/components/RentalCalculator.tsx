@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { formatCurrency, calculateInitialCost, calculateMonthlyTotal, InitialCostInput, MonthlyInput } from "../utils/rentalCalculations";
+import { formatCurrency, calculateInitialCost, calculateMonthlyTotal, InitialCostInput, MonthlyInput, getDefaultMoveInDate } from "../utils/rentalCalculations";
 import { extractPropertyDataFromImage, fileToBase64 } from "../utils/geminiExtract";
 import { EstimateSheet } from "./EstimateSheet";
 
@@ -10,6 +10,10 @@ const AGENCY_OPTIONS = [
   { value: "0", label: "0円" },
   { value: "custom", label: "直接入力（税込）" },
 ];
+
+interface ExtraItem { name: string; amount: string; enabled: boolean; }
+
+const defaultExtra = (): ExtraItem => ({ name: "", amount: "", enabled: false });
 
 export const RentalCalculator = () => {
   const [rent, setRent] = useState("");
@@ -22,15 +26,25 @@ export const RentalCalculator = () => {
   const [showDetail, setShowDetail] = useState(false);
   const [depositMonths, setDepositMonths] = useState("1");
   const [keyMoneyMonths, setKeyMoneyMonths] = useState("1");
+
+  // オプション費用（チェックボックス付き）
+  const [hasInsurance, setHasInsurance] = useState(false);
   const [insuranceFee, setInsuranceFee] = useState("20000");
+  const [hasKeyExchange, setHasKeyExchange] = useState(false);
   const [keyExchangeFee, setKeyExchangeFee] = useState("27500");
-  const [cleaningFee, setCleaningFee] = useState("55000");
+  const [hasCleaning, setHasCleaning] = useState(false);
+  const [cleaningFee, setCleaningFee] = useState("0");
+  const [hasSupport, setHasSupport] = useState(false);
   const [supportFee, setSupportFee] = useState("16500");
   const [hasDisinfection, setHasDisinfection] = useState(false);
   const [disinfectionFee, setDisinfectionFee] = useState("16500");
   const [hasContractFee, setHasContractFee] = useState(false);
   const [contractFee, setContractFee] = useState("5500");
-  const [moveInDate, setMoveInDate] = useState("");
+
+  // フリーフォーム追加項目（3つ）
+  const [extraItems, setExtraItems] = useState<ExtraItem[]>([defaultExtra(), defaultExtra(), defaultExtra()]);
+
+  const [moveInDate, setMoveInDate] = useState(getDefaultMoveInDate());
   const [hasRentFree, setHasRentFree] = useState(false);
   const [rentFreeMonths, setRentFreeMonths] = useState("1");
   const [showMonthly, setShowMonthly] = useState(false);
@@ -54,6 +68,10 @@ export const RentalCalculator = () => {
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const updateExtra = (idx: number, field: keyof ExtraItem, value: string | boolean) => {
+    setExtraItems(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -71,9 +89,17 @@ export const RentalCalculator = () => {
     try {
       const { base64, mimeType } = await fileToBase64(file);
       const ex = await extractPropertyDataFromImage(base64, mimeType, apiKey);
+
       if (ex.rent) setRent(ex.rent);
       if (ex.managementFee) setManagementFee(ex.managementFee);
-      if (ex.depositMonths != null) setDepositMonths(ex.depositMonths);
+      if (ex.depositMonths != null) {
+        setDepositMonths(ex.depositMonths);
+        // 敷金0の場合、クリーニングを55000円でON
+        if (ex.depositMonths === "0") {
+          setHasCleaning(true);
+          setCleaningFee("55000");
+        }
+      }
       if (ex.keyMoneyMonths != null) setKeyMoneyMonths(ex.keyMoneyMonths);
       if (ex.propertyName) setPropertyName(ex.propertyName);
       if (ex.roomNumber) setRoomNumber(ex.roomNumber);
@@ -82,14 +108,32 @@ export const RentalCalculator = () => {
       if (ex.guaranteeFeeType) setGuaranteeFeeType(ex.guaranteeFeeType as "rate"|"fixed");
       if (ex.guaranteeFeeRate) setGuaranteeFeeRate(ex.guaranteeFeeRate);
       if (ex.guaranteeFeeFixed) setGuaranteeFeeFixed(ex.guaranteeFeeFixed);
-      if (ex.insuranceFee) setInsuranceFee(ex.insuranceFee);
-      if (ex.keyExchangeFee) setKeyExchangeFee(ex.keyExchangeFee);
-      if (ex.cleaningFee) setCleaningFee(ex.cleaningFee);
-      if (ex.supportFee) setSupportFee(ex.supportFee);
+
+      // 入居可能日
+      if (ex.availableDate) {
+        setMoveInDate(ex.availableDate);
+      }
+
+      // 図面に記載があった場合のみON
+      if (ex.insuranceFee != null) { setHasInsurance(true); setInsuranceFee(ex.insuranceFee); }
+      if (ex.keyExchangeFee != null) { setHasKeyExchange(true); setKeyExchangeFee(ex.keyExchangeFee); }
+      if (ex.cleaningFee != null) { setHasCleaning(true); setCleaningFee(ex.cleaningFee); }
+      if (ex.supportFee != null) { setHasSupport(true); setSupportFee(ex.supportFee); }
       if (ex.hasDisinfection) { setHasDisinfection(true); setShowDetail(true); }
       if (ex.disinfectionFee) setDisinfectionFee(ex.disinfectionFee);
       if (ex.hasContractFee) { setHasContractFee(true); setShowDetail(true); }
       if (ex.contractFee) setContractFee(ex.contractFee);
+
+      // extraItemsを自動反映
+      if (ex.extraItems && ex.extraItems.length > 0) {
+        const newExtras = [defaultExtra(), defaultExtra(), defaultExtra()];
+        ex.extraItems.slice(0, 3).forEach((item, idx) => {
+          newExtras[idx] = { name: item.name, amount: String(item.amount), enabled: true };
+        });
+        setExtraItems(newExtras);
+        setShowDetail(true);
+      }
+
       setAnalyzeSuccess(true);
       setShowDetail(true);
     } catch (err: any) {
@@ -107,6 +151,18 @@ export const RentalCalculator = () => {
     if (file) analyzeImage(file);
   };
 
+  // 敷金変更時にクリーニング連動
+  const handleDepositChange = (val: string) => {
+    setDepositMonths(val);
+    if (val === "0" && !hasCleaning) {
+      setHasCleaning(true);
+      setCleaningFee("55000");
+    } else if (val !== "0" && cleaningFee === "55000") {
+      setHasCleaning(false);
+      setCleaningFee("0");
+    }
+  };
+
   const calculate = () => {
     if (!rent) { setError("家賃を入力してください。"); return; }
     setError("");
@@ -121,12 +177,13 @@ export const RentalCalculator = () => {
       guaranteeFeeType,
       guaranteeFeeRate: guaranteeFeeType === "rate" ? parseFloat(guaranteeFeeRate) : undefined,
       guaranteeFeeFixed: guaranteeFeeType === "fixed" ? parseFloat(guaranteeFeeFixed || "0") : undefined,
-      insuranceFee: parseFloat(insuranceFee),
-      keyExchangeFee: parseFloat(keyExchangeFee),
-      cleaningFee: parseFloat(cleaningFee),
-      supportFee: parseFloat(supportFee),
+      hasInsurance, insuranceFee: parseFloat(insuranceFee),
+      hasKeyExchange, keyExchangeFee: parseFloat(keyExchangeFee),
+      hasCleaning, cleaningFee: parseFloat(cleaningFee),
+      hasSupport, supportFee: parseFloat(supportFee),
       hasDisinfection, disinfectionFee: parseFloat(disinfectionFee),
       hasContractFee, contractFee: parseFloat(contractFee),
+      extraItems: extraItems.map(e => ({ name: e.name, amount: parseFloat(e.amount || "0"), enabled: e.enabled })),
       moveInDate, hasRentFree, rentFreeMonths: parseFloat(rentFreeMonths),
     };
     setResult(calculateInitialCost(input));
@@ -151,11 +208,29 @@ export const RentalCalculator = () => {
     ? Math.floor((parseFloat(rent) + parseFloat(managementFee)) * (parseFloat(guaranteeMonthlyRate) / 100))
     : null;
 
+  // チェックボックス付き費用行
+  const FeeRow = ({ checked, onCheck, label, value, onChange, defaultVal }: {
+    checked: boolean; onCheck: (v: boolean) => void; label: string;
+    value: string; onChange: (v: string) => void; defaultVal: string;
+  }) => (
+    <div className="flex items-center gap-2">
+      <input type="checkbox" checked={checked} onChange={e => onCheck(e.target.checked)} className="w-4 h-4 rounded text-blue-600 flex-shrink-0" />
+      <span className={"text-sm w-32 flex-shrink-0 " + (checked ? "text-gray-700" : "text-gray-400")}>{label}</span>
+      <input type="number" value={checked ? value : ""} onChange={e => onChange(e.target.value)}
+        disabled={!checked} placeholder={checked ? defaultVal : "0"}
+        className={"flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm " + (checked ? "bg-white" : "bg-gray-50 text-gray-400")} />
+      <span className="text-xs text-gray-400 flex-shrink-0">円</span>
+      {checked && (
+        <button onClick={() => { onCheck(false); onChange("0"); }} className="text-xs text-gray-400 hover:text-red-400 flex-shrink-0 px-1">✕</button>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
 
-        <div className="text-center no-print">
+        <div className="text-center">
           <div className="inline-flex items-center gap-2 mb-1">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
@@ -169,7 +244,7 @@ export const RentalCalculator = () => {
         </div>
 
         {/* AI画像解析 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 no-print">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
             <span className="bg-purple-100 text-purple-600 text-xs px-2 py-0.5 rounded-full font-bold">AI</span>
             募集図面から自動入力
@@ -220,7 +295,7 @@ export const RentalCalculator = () => {
         </div>
 
         {/* 物件情報 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 no-print">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">物件情報（任意）</h3>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div><label className={lc}>物件名</label>
@@ -233,7 +308,7 @@ export const RentalCalculator = () => {
         </div>
 
         {/* 基本情報 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 no-print">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">基本情報</h3>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div><label className={lc}>家賃（円）<span className="text-red-500">*</span></label>
@@ -266,7 +341,6 @@ export const RentalCalculator = () => {
             ) : (
               <input className={ic} type="number" placeholder="50000" value={guaranteeFeeFixed} onChange={e => setGuaranteeFeeFixed(e.target.value)} />
             )}
-            <p className="text-xs text-gray-400 mt-1">30〜120%が目安。交渉可能な場合あり。</p>
           </div>
           <div>
             <label className={lc}>仲介手数料</label>
@@ -280,7 +354,7 @@ export const RentalCalculator = () => {
         </div>
 
         {/* 詳細設定 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden no-print">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <button onClick={() => setShowDetail(!showDetail)}
             className="w-full flex items-center justify-between p-5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
             <span>詳細設定（敷金・礼金・各種費用）</span>
@@ -291,12 +365,13 @@ export const RentalCalculator = () => {
           {showDetail && (
             <div className="px-5 pb-5 space-y-4 border-t border-gray-50">
               <div className="pt-4">
-                <label className={lc}>入居予定日（日割り家賃の計算に使用）</label>
+                <label className={lc}>家賃発生日（日割り家賃の計算に使用）</label>
                 <input className={ic} type="date" value={moveInDate} onChange={e => setMoveInDate(e.target.value)} />
+                <p className="text-xs text-gray-400 mt-1">※画像認識で入居可能日を自動設定。未記載の場合は3週間後の土曜日</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className={lc}>敷金</label>
-                  <select className={ic} value={depositMonths} onChange={e => setDepositMonths(e.target.value)}>
+                  <select className={ic} value={depositMonths} onChange={e => handleDepositChange(e.target.value)}>
                     {["0","1","2","3"].map(m => <option key={m} value={m}>{m === "0" ? "なし" : m + "ヶ月"}</option>)}
                   </select></div>
                 <div><label className={lc}>礼金</label>
@@ -315,47 +390,37 @@ export const RentalCalculator = () => {
                   </select>
                 )}
               </div>
+
+              {/* 初回費用（チェックボックス付き） */}
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">初回費用</p>
                 <div className="space-y-2">
-                  {[
-                    { label: "火災保険料", value: insuranceFee, set: setInsuranceFee },
-                    { label: "鍵交換費用", value: keyExchangeFee, set: setKeyExchangeFee },
-                    { label: "退去時クリーニング", value: cleaningFee, set: setCleaningFee },
-                    { label: "24時間サポート", value: supportFee, set: setSupportFee },
-                  ].map(({ label, value, set }) => (
-                    <div key={label} className="flex items-center gap-3">
-                      <span className="text-sm text-gray-600 w-36">{label}</span>
-                      <input type="number" value={value} onChange={e => set(e.target.value)}
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
-                      <span className="text-xs text-gray-400">円</span>
-                    </div>
-                  ))}
-                  <div className="pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer mb-1">
-                      <input type="checkbox" checked={hasDisinfection} onChange={e => setHasDisinfection(e.target.checked)} className="w-4 h-4 rounded" />
-                      <span className="text-sm text-gray-600">室内除菌抗菌</span>
-                    </label>
-                    {hasDisinfection && (
-                      <div className="flex items-center gap-3 ml-6">
-                        <input type="number" value={disinfectionFee} onChange={e => setDisinfectionFee(e.target.value)}
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
-                        <span className="text-xs text-gray-400">円</span>
+                  <FeeRow checked={hasInsurance} onCheck={setHasInsurance} label="火災保険料" value={insuranceFee} onChange={setInsuranceFee} defaultVal="20000" />
+                  <FeeRow checked={hasKeyExchange} onCheck={setHasKeyExchange} label="鍵交換費用" value={keyExchangeFee} onChange={setKeyExchangeFee} defaultVal="27500" />
+                  <FeeRow checked={hasCleaning} onCheck={v => { setHasCleaning(v); if (v && cleaningFee === "0") setCleaningFee(depositMonths === "0" ? "55000" : "55000"); }} label="退去時クリーニング" value={cleaningFee} onChange={setCleaningFee} defaultVal="55000" />
+                  <FeeRow checked={hasSupport} onCheck={setHasSupport} label="24時間サポート" value={supportFee} onChange={setSupportFee} defaultVal="16500" />
+                  <FeeRow checked={hasDisinfection} onCheck={setHasDisinfection} label="室内除菌抗菌" value={disinfectionFee} onChange={setDisinfectionFee} defaultVal="16500" />
+                  <FeeRow checked={hasContractFee} onCheck={setHasContractFee} label="契約事務手数料" value={contractFee} onChange={setContractFee} defaultVal="5500" />
+
+                  {/* フリーフォーム追加項目 */}
+                  <div className="border-t border-gray-100 pt-3 mt-2">
+                    <p className="text-xs text-gray-400 mb-2">その他費用（自由入力）</p>
+                    {extraItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 mb-2">
+                        <input type="checkbox" checked={item.enabled} onChange={e => updateExtra(idx, "enabled", e.target.checked)}
+                          className="w-4 h-4 rounded text-blue-600 flex-shrink-0" />
+                        <input type="text" value={item.name} onChange={e => updateExtra(idx, "name", e.target.value)}
+                          placeholder="項目名" disabled={!item.enabled}
+                          className={"w-28 border border-gray-200 rounded-lg px-2 py-1.5 text-sm " + (item.enabled ? "bg-white" : "bg-gray-50 text-gray-400")} />
+                        <input type="number" value={item.amount} onChange={e => updateExtra(idx, "amount", e.target.value)}
+                          placeholder="金額" disabled={!item.enabled}
+                          className={"flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm " + (item.enabled ? "bg-white" : "bg-gray-50 text-gray-400")} />
+                        <span className="text-xs text-gray-400 flex-shrink-0">円</span>
+                        {item.enabled && (
+                          <button onClick={() => updateExtra(idx, "enabled", false)} className="text-xs text-gray-400 hover:text-red-400 flex-shrink-0 px-1">✕</button>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-2 cursor-pointer mb-1">
-                      <input type="checkbox" checked={hasContractFee} onChange={e => setHasContractFee(e.target.checked)} className="w-4 h-4 rounded" />
-                      <span className="text-sm text-gray-600">契約事務手数料</span>
-                    </label>
-                    {hasContractFee && (
-                      <div className="flex items-center gap-3 ml-6">
-                        <input type="number" value={contractFee} onChange={e => setContractFee(e.target.value)}
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
-                        <span className="text-xs text-gray-400">円</span>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               </div>
@@ -364,7 +429,7 @@ export const RentalCalculator = () => {
         </div>
 
         {/* 毎月の費用 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden no-print">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <button onClick={() => setShowMonthly(!showMonthly)}
             className="w-full flex items-center justify-between p-5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
             <span>毎月の費用（参考表示）</span>
@@ -411,10 +476,10 @@ export const RentalCalculator = () => {
           )}
         </div>
 
-        {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 no-print">{error}</div>}
+        {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">{error}</div>}
 
         <button onClick={calculate}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors text-base shadow-sm no-print">
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors text-base shadow-sm">
           初期費用を計算する
         </button>
 
