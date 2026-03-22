@@ -473,58 +473,55 @@ export const EstimateSheet = ({
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="bg-green-600 px-4 py-3 text-white text-center">
             <p className="text-sm font-bold">XROOMSの担当者に相談する（無料）</p>
-            <p className="text-xs text-green-200 mt-0.5">見積書を見ながら、プロが最適なご提案をします</p>
+            <p className="text-xs text-green-200 mt-0.5">専門エージェントが解析データを精査し、お客様のご状況に合わせた最適な契約条件を検証いたします</p>
           </div>
           <div className="p-3 space-y-2">
-            {[
-              {
-                label: "見積書をプロが精査（セカンドオピニオン）",
-                emoji: "🔍",
-                color: "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100",
-                msg: `【初期費用診断】から連絡しました。以下の物件の見積もり精査をお願いします。\n物件名：${propertyName || "不明"} ${roomNumber ? roomNumber + "号室" : ""}\n住所：${propertyAddress || "不明"}\n家賃：${rent || "不明"}円\n手元の見積書もこの後お送りします。内容が適正か、無駄な付帯費用がないかアドバイスいただけますか？`,
-              },
-              {
-                label: "この条件で申し込みを進める",
-                emoji: "✍️",
-                color: "bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100",
-                msg: `以下の物件の入居申し込みを希望します。\n物件名：${propertyName || "不明"} ${roomNumber ? roomNumber + "号室" : ""}\n住所：${propertyAddress || "不明"}\n家賃：${rent || "不明"}円\n申込フォームの発行と、管理会社確認済みの正式な見積書の作成をお願いいたします。`,
-              },
-            ].map(({ label, emoji, color, msg }) => (
-              <a
-                key={label}
-                href={`https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(msg)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  // フォールバック: line.me が動かない場合はlin.ee
-                  e.preventDefault();
-                  const lineUrl = `https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(msg)}`;
-                  const fallback = "https://lin.ee/fhtzVrp";
-                  window.open(lineUrl, "_blank");
-                  setTimeout(() => {}, 500);
-                  _ = fallback;
-                }}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-colors cursor-pointer ${color}`}
-              >
-                <span className="text-lg flex-shrink-0">{emoji}</span>
-                <span>{label}</span>
-                <svg className="w-4 h-4 ml-auto flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </a>
-            ))}
-
-            {/* 内見予約ボタン（モーダル付き） */}
-            <button
-              onClick={() => setShowInternalModal(true)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 text-sm font-medium transition-colors"
-            >
-              <span className="text-lg flex-shrink-0">📅</span>
-              <span>内見を予約する（無料）</span>
-              <svg className="w-4 h-4 ml-auto flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </button>
+            {(() => {
+              const pName = propertyName || "不明";
+              const pRoom = roomNumber ? roomNumber + "号室" : "";
+              const pAddr = propertyAddress || "不明";
+              const pRent = rent || "不明";
+              const msgSecond = `お世話になっております。【初期費用診断】から連絡しました。
+以下の物件について、不明な諸費用についても管理会社に確認のうえ、改めてお見積書の作成をお願いいたします。
+物件名：${pName} ${pRoom}
+住所：${pAddr}
+家賃：${pRent}円
+手元の見積書もこの後お送りします。内容が適正かアドバイスいただけますか？`;
+              const msgApply = `お世話になっております。以下の物件の入居申し込みを希望します。
+不明な諸費用についても管理会社に確認のうえ、改めてお見積書の作成をお願いいたします。
+物件名：${pName} ${pRoom}
+住所：${pAddr}
+家賃：${pRent}円
+申込フォームの発行をお願いいたします。`;
+              const lineBase = "https://lin.ee/fhtzVrp";
+              const toLine = (msg: string) => `${lineBase}?text=${encodeURIComponent(msg)}`;
+              return (
+                <>
+                  {[
+                    { label: "見積書を専門エージェントが精査（セカンドオピニオン）", emoji: "🔍", color: "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100", msg: msgSecond },
+                    { label: "この条件で申し込みを進める", emoji: "✍️", color: "bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100", msg: msgApply },
+                  ].map(({ label, emoji, color, msg }) => (
+                    <a key={label} href={toLine(msg)} target="_blank" rel="noopener noreferrer"
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-colors cursor-pointer ${color}`}>
+                      <span className="text-lg flex-shrink-0">{emoji}</span>
+                      <span>{label}</span>
+                      <svg className="w-4 h-4 ml-auto flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                      </svg>
+                    </a>
+                  ))}
+                  {/* 内見予約ボタン */}
+                  <button onClick={() => setShowInternalModal(true)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 text-sm font-medium transition-colors">
+                    <span className="text-lg flex-shrink-0">📅</span>
+                    <span>内見を予約する（無料）</span>
+                    <svg className="w-4 h-4 ml-auto flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </button>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -587,7 +584,12 @@ export const EstimateSheet = ({
               </div>
             </div>
             <a
-              href={`https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(`以下の物件の内見を希望します。\n物件名：${propertyName || "不明"} ${roomNumber ? roomNumber + "号室" : ""}\n住所：${propertyAddress || "不明"}\n家賃：${rent || "不明"}円\n第一希望：${visitDate || "未定"} ${visitTime}\n併せて、AI診断結果に基づいた正確な見積書も事前に送付いただけますか？`)}`}
+              href={`https://lin.ee/fhtzVrp?text=${encodeURIComponent(`お世話になっております。以下の物件の内見を希望します。
+不明な諸費用についても管理会社に確認のうえ、改めてお見積書の作成をお願いいたします。
+物件名：${propertyName || "不明"} ${roomNumber ? roomNumber + "号室" : ""}
+住所：${propertyAddress || "不明"}
+家賃：${rent || "不明"}円
+第一希望：${visitDate || "未定"} ${visitTime}`)}`}
               target="_blank" rel="noopener noreferrer"
               onClick={() => setShowInternalModal(false)}
               className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition-colors"
