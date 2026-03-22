@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { formatCurrency } from "../utils/rentalCalculations";
 
 interface EstimateSheetProps {
@@ -16,6 +16,7 @@ export const EstimateSheet = ({
   result, monthlyResult, propertyName, roomNumber, propertyUrl, propertyImage, rent, managementFee
 }: EstimateSheetProps) => {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const [showFullImage, setShowFullImage] = useState(false);
 
   const handlePrint = () => {
     window.print();
@@ -95,6 +96,29 @@ export const EstimateSheet = ({
             </div>
           </div>
         </div>
+
+        {/* 物件資料（大きく表示） */}
+        {propertyImage && (
+          <div className="px-6 py-4 border-b border-gray-100">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">物件資料</p>
+            <img
+              src={propertyImage}
+              alt="物件資料"
+              className="w-full rounded-xl border border-gray-100 cursor-pointer hover:opacity-95 transition-opacity"
+              onClick={() => setShowFullImage(!showFullImage)}
+            />
+            <p className="text-xs text-gray-400 mt-1 text-center">タップで拡大表示</p>
+            {showFullImage && (
+              <div
+                className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+                onClick={() => setShowFullImage(false)}
+              >
+                <img src={propertyImage} alt="物件資料" className="max-w-full max-h-full object-contain rounded-xl" />
+                <button className="absolute top-4 right-4 text-white text-2xl font-bold">✕</button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 合計 */}
         <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
