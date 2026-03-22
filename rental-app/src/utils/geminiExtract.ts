@@ -38,7 +38,7 @@ export const extractPropertyDataFromImage = async (
             { inline_data: { mime_type: mimeType, data: base64Image } }
           ]
         }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
       })
     }
   );
