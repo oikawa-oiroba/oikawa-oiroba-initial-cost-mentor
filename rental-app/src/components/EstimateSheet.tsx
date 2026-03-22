@@ -288,7 +288,7 @@ export const EstimateSheet = ({
           {/* 小計A+B+C */}
           <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-gray-100">
             <p className="text-xs font-bold text-gray-700">小計（契約金 A＋B＋C項目）</p>
-            <p className="text-sm font-bold text-gray-800">{formatCurrency(result.subtotals.contract + result.subtotals.option + (result.subtotals.cleaning || 0))}</p>
+            <p className="text-sm font-bold text-gray-800">{formatCurrency((result.subtotals.contract ?? 0) + (result.subtotals.option ?? 0) + (result.subtotals.cleaning ?? 0))}</p>
           </div>
 
           {/* 契約時前家賃 */}
