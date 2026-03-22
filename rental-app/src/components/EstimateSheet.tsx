@@ -122,26 +122,88 @@ export const EstimateSheet = ({
 
         {/* 合計 */}
         <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
-          <div className="flex justify-between items-center">
-            <p className="text-sm font-bold text-blue-800">初期費用合計（概算）</p>
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <div>
+              <p className="text-sm font-bold text-blue-800">初期費用合計（概算）</p>
+              {result.prorationInfo && (
+                <p className="text-xs text-blue-600 mt-0.5">
+                  契約開始日(仮)　{result.prorationInfo.startDate}〜
+                </p>
+              )}
+            </div>
             <p className="text-3xl font-bold text-blue-700">{formatCurrency(result.total)}</p>
           </div>
         </div>
 
         {/* 内訳 */}
         <div className="px-6 py-4 space-y-4">
-          {[
-            { key: "contract", label: "契約金", color: "text-blue-700", bg: "bg-blue-50" },
-            { key: "option", label: "初回オプション費用", color: "text-purple-700", bg: "bg-purple-50" },
-            { key: "firstMonth", label: "初月家賃関連", color: "text-green-700", bg: "bg-green-50" },
-          ].map(({ key, label, color, bg }) => {
-            const items = Object.values(result.items as Record<string, any>).filter((c: any) => c.category === key && c.amount !== 0);
+          {/* 契約金A */}
+          {(() => {
+            const items = Object.values(result.items as Record<string, any>).filter((c: any) => c.category === "contract");
+            const agencyFeeItem = items.find((i: any) => i.label.includes("仲介手数料"));
+            const showAgencyNote = agencyFeeItem && agencyFeeItem.amount === 0;
+            return (
+              <div>
+                <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-blue-50 mb-1">
+                  <p className="text-xs font-bold text-blue-700">契約金 A項目（敷金・礼金・仲介手数料・保証会社）</p>
+                  <p className="text-sm font-bold text-blue-700">{formatCurrency(result.subtotals.contract)}</p>
+                </div>
+                <div className="border border-gray-100 rounded-lg overflow-hidden">
+                  {items.map((item: any, idx: number) => (
+                    <div key={item.label} className={`flex justify-between px-3 py-2 text-xs ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                      <span className="text-gray-500 flex-1 pr-2">{item.label}</span>
+                      <span className={`font-medium whitespace-nowrap ${item.amount < 0 ? "text-green-600" : "text-gray-800"}`}>
+                        {formatCurrency(item.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {showAgencyNote && (
+                  <p className="text-xs text-gray-400 mt-1 px-1">
+                    ※契約条件により仲介手数料が発生する場合がございます。詳しくは担当までお問い合わせください。
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 契約金B */}
+          {(() => {
+            const items = Object.values(result.items as Record<string, any>).filter((c: any) => c.category === "option" && c.amount !== 0);
             if (items.length === 0) return null;
             return (
-              <div key={key}>
-                <div className={`flex justify-between items-center px-3 py-1.5 rounded-lg ${bg} mb-1`}>
-                  <p className={`text-xs font-bold ${color}`}>{label}</p>
-                  <p className={`text-sm font-bold ${color}`}>{formatCurrency(result.subtotals[key])}</p>
+              <div>
+                <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-purple-50 mb-1">
+                  <p className="text-xs font-bold text-purple-700">契約金 B項目（火災保険・鍵交換代・24時間サポートほか）</p>
+                  <p className="text-sm font-bold text-purple-700">{formatCurrency(result.subtotals.option)}</p>
+                </div>
+                <div className="border border-gray-100 rounded-lg overflow-hidden">
+                  {items.map((item: any, idx: number) => (
+                    <div key={item.label} className={`flex justify-between px-3 py-2 text-xs ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                      <span className="text-gray-500 flex-1 pr-2">{item.label}</span>
+                      <span className="font-medium whitespace-nowrap text-gray-800">{formatCurrency(item.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 小計（A+B） */}
+          <div className="flex justify-between items-center px-3 py-2 rounded-lg bg-gray-100">
+            <p className="text-xs font-bold text-gray-700">小計（契約金 A項目 ＋ B項目）</p>
+            <p className="text-sm font-bold text-gray-800">{formatCurrency(result.subtotals.contract + result.subtotals.option)}</p>
+          </div>
+
+          {/* 契約時前家賃 */}
+          {(() => {
+            const items = Object.values(result.items as Record<string, any>).filter((c: any) => c.category === "firstMonth" && c.amount !== 0);
+            if (items.length === 0) return null;
+            return (
+              <div>
+                <div className="flex justify-between items-center px-3 py-1.5 rounded-lg bg-green-50 mb-1">
+                  <p className="text-xs font-bold text-green-700">契約時前家賃（初月賃料日割り＋翌月賃料１ヶ月分）</p>
+                  <p className="text-sm font-bold text-green-700">{formatCurrency(result.subtotals.firstMonth)}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg overflow-hidden">
                   {items.map((item: any, idx: number) => (
@@ -155,7 +217,7 @@ export const EstimateSheet = ({
                 </div>
               </div>
             );
-          })}
+          })()}
 
           {/* 毎月費用 */}
           {monthlyResult !== null && (
