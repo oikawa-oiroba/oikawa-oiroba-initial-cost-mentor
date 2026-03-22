@@ -74,6 +74,7 @@ export const RentalCalculator = () => {
   const [result, setResult] = useState<any>(null);
   const [monthlyResult, setMonthlyResult] = useState<number|null>(null);
   const [monthlyItems, setMonthlyItems] = useState<Array<{label: string; amount: number}>>([]);
+  const [evidence, setEvidence] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,6 +147,7 @@ export const RentalCalculator = () => {
     }
     setAnalyzeSuccess(true);
     setShowDetail(true);
+    if (ex.evidence) setEvidence(ex.evidence);
   };
 
   const handleFetchUrl = async () => {
@@ -256,7 +258,7 @@ export const RentalCalculator = () => {
         { label: "家賃", amount: rentNum2 },
         ...(mgmtNum2 > 0 ? [{ label: "管理費・共益費", amount: mgmtNum2 }] : []),
         ...(guaranteeMonthly > 0 ? [{ label: `保証会社（月額${gRate > 0 ? gRate + "%" : ""}）`, amount: guaranteeMonthly }] : []),
-        ...(parseFloat(insuranceMonthly) > 0 ? [{ label: "火災保険（月割）", amount: parseFloat(insuranceMonthly) }] : []),
+        ...(parseFloat(insuranceMonthly) > 0 ? [{ label: "火災保険（月額）", amount: parseFloat(insuranceMonthly) }] : []),
         ...(parseFloat(supportMonthly) > 0 ? [{ label: "24時間サポート", amount: parseFloat(supportMonthly) }] : []),
         ...(parseFloat(townFee) > 0 ? [{ label: "町内会費", amount: parseFloat(townFee) }] : []),
         ...(parseFloat(otherMonthlyFee) > 0 ? [{ label: otherMonthlyName, amount: parseFloat(otherMonthlyFee) }] : []),
@@ -569,23 +571,36 @@ export const RentalCalculator = () => {
                   onChange={e => { setGuaranteeMonthlyFixed(e.target.value); setGuaranteeMonthlyRate(""); }} />
               </div>
               {[
-                { label: "火災保険（月割）", value: insuranceMonthly, set: setInsuranceMonthly },
+                { label: "火災保険（月額）", value: insuranceMonthly, set: setInsuranceMonthly },
                 { label: "24時間サポート（月額）", value: supportMonthly, set: setSupportMonthly },
                 { label: "町内会費", value: townFee, set: setTownFee },
               ].map(({ label, value, set }) => (
-                <div key={label} className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600 w-36">{label}</span>
-                  <input type="number" value={value} onChange={e => set(e.target.value)}
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
-                  <span className="text-xs text-gray-400">円</span>
+                <div key={label} className="flex items-center gap-2">
+                  <input type="checkbox" checked={parseFloat(value) > 0}
+                    onChange={e => set(e.target.checked ? "1000" : "0")}
+                    className="w-4 h-4 rounded text-blue-600 flex-shrink-0" />
+                  <span className={"text-sm w-32 flex-shrink-0 " + (parseFloat(value) > 0 ? "text-gray-700" : "text-gray-400")}>{label}</span>
+                  <input type="number" value={value} onChange={e => set(e.target.value)} placeholder="0"
+                    className={"flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm " + (parseFloat(value) > 0 ? "bg-white" : "bg-gray-50")} />
+                  <span className="text-xs text-gray-400 flex-shrink-0">円</span>
+                  {parseFloat(value) > 0 && (
+                    <button onClick={() => set("0")} className="text-xs text-gray-400 hover:text-red-400 flex-shrink-0 px-1">✕</button>
+                  )}
                 </div>
               ))}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={parseFloat(otherMonthlyFee) > 0}
+                  onChange={e => setOtherMonthlyFee(e.target.checked ? "1000" : "0")}
+                  className="w-4 h-4 rounded text-blue-600 flex-shrink-0" />
                 <input type="text" value={otherMonthlyName} onChange={e => setOtherMonthlyName(e.target.value)}
-                  className="w-36 border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white" placeholder="項目名" />
+                  className={"w-28 border border-gray-200 rounded-lg px-2 py-1.5 text-sm " + (parseFloat(otherMonthlyFee) > 0 ? "bg-white" : "bg-gray-50")}
+                  placeholder="項目名" />
                 <input type="number" value={otherMonthlyFee} onChange={e => setOtherMonthlyFee(e.target.value)}
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white" />
-                <span className="text-xs text-gray-400">円</span>
+                  className={"flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm " + (parseFloat(otherMonthlyFee) > 0 ? "bg-white" : "bg-gray-50")} />
+                <span className="text-xs text-gray-400 flex-shrink-0">円</span>
+                {parseFloat(otherMonthlyFee) > 0 && (
+                  <button onClick={() => setOtherMonthlyFee("0")} className="text-xs text-gray-400 hover:text-red-400 flex-shrink-0 px-1">✕</button>
+                )}
               </div>
             </div>
           )}
@@ -603,6 +618,7 @@ export const RentalCalculator = () => {
             result={result}
             monthlyResult={monthlyResult}
             monthlyItems={monthlyItems}
+            evidence={evidence}
             propertyName={propertyName}
             roomNumber={roomNumber}
             propertyAddress={propertyAddress}
