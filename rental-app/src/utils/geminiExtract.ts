@@ -37,6 +37,12 @@ export interface ExtractedPropertyData {
   insuranceMonthly?: string;
   supportMonthly?: string;
   adRate?: number;
+  exclusiveArea?: string;
+  renewalFeeRate?: string;
+  renewalAdminFeeRate?: string;
+  guaranteeRenewalFee?: string;
+  insuranceRenewalFee?: string;
+  supportRenewalFee?: string;
   evidence?: Record<string, EvidenceItem>;
   warnings?: string[];
 }
