@@ -32,6 +32,10 @@ export const EstimateSheet = ({
   const sheetRef = useRef<HTMLDivElement>(null);
   const [showFullImage, setShowFullImage] = useState(false);
   const [isSavingPng, setIsSavingPng] = useState(false);
+  const [showInternalModal, setShowInternalModal] = useState(false);
+  const [visitDate, setVisitDate] = useState("");
+  const [visitTime, setVisitTime] = useState("午前");
+  let _ = "";
 
   const handlePrint = () => window.print();
 
@@ -218,13 +222,13 @@ export const EstimateSheet = ({
 
         {/* 合計 */}
         <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
-          <p className="text-xs font-bold text-blue-800 mb-1">初期費用概算</p>
+          <p className="text-xs font-bold text-blue-800 mb-1">概算契約諸費用（固定分）</p>
+          <p className="text-xs text-blue-500 mb-2">※前家賃・日割り家賃は含まれていません</p>
           {result.prorationInfo && (
-            <p className="text-xs text-blue-600 mb-2">契約開始日(仮)　{result.prorationInfo.startDate}〜</p>
+            <p className="text-xs text-blue-600 mb-1">契約開始日(仮)　{result.prorationInfo.startDate}〜</p>
           )}
           <div className="flex items-baseline gap-1 flex-wrap">
             <span className="text-3xl font-bold text-blue-700">{formatCurrency((result.subtotals?.contract ?? 0) + (result.subtotals?.option ?? 0) + (result.subtotals?.cleaning ?? 0))}</span>
-            <span className="text-sm text-blue-500 font-medium">＋契約時前家賃（初月賃料日割り＋翌月賃料１ヶ月分）</span>
           </div>
         </div>
 
@@ -336,17 +340,30 @@ export const EstimateSheet = ({
 
           {/* 合計ライン */}
           <div className="border-t-2 border-gray-800 pt-3">
-            <p className="font-bold text-gray-900 text-xs mb-1">初期費用概算</p>
+            <p className="font-bold text-gray-900 text-xs mb-1">概算契約諸費用（固定分）</p>
             <div className="flex items-baseline gap-1 flex-wrap">
               <span className="font-bold text-blue-700 text-2xl">{formatCurrency((result.subtotals?.contract ?? 0) + (result.subtotals?.option ?? 0) + (result.subtotals?.cleaning ?? 0))}</span>
-              <span className="text-xs text-blue-500 font-medium">＋契約時前家賃（初月賃料日割り＋翌月賃料１ヶ月分）</span>
             </div>
-            <p className="text-xs text-gray-400 mt-0.5">合計（前家賃含む）: {formatCurrency(result.total ?? 0)}</p>
           </div>
 
           <p className="text-xs text-gray-400 text-center pt-1">
             ※この見積書はあくまで概算です。実際の金額は契約内容により異なります。
           </p>
+
+          {/* 推定・振込総額 */}
+          <div className="bg-blue-700 rounded-xl px-4 py-3 text-white">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-xs font-bold text-blue-200 mb-0.5">推定・振込総額（概算）</p>
+                <p className="text-xs text-blue-300">
+                  {result.prorationInfo ? `${result.prorationInfo.startDate}契約開始(仮)として計算` : "前家賃・日割り家賃を含む総額"}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold">{formatCurrency(result.total ?? 0)}</p>
+              </div>
+            </div>
+          </div>
 
           {/* 参考セクション */}
           {(monthlyResult !== null || showRenewal) && (
@@ -451,6 +468,66 @@ export const EstimateSheet = ({
 
       {/* ボタン類（一番下） */}
       <div className="mt-4 space-y-3 no-print">
+
+        {/* LINE CTA */}
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <div className="bg-green-600 px-4 py-3 text-white text-center">
+            <p className="text-sm font-bold">XROOMSの担当者に相談する（無料）</p>
+            <p className="text-xs text-green-200 mt-0.5">見積書を見ながら、プロが最適なご提案をします</p>
+          </div>
+          <div className="p-3 space-y-2">
+            {[
+              {
+                label: "見積書をプロが精査（セカンドオピニオン）",
+                emoji: "🔍",
+                color: "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100",
+                msg: `【初期費用診断】から連絡しました。以下の物件の見積もり精査をお願いします。\n物件名：${propertyName || "不明"} ${roomNumber ? roomNumber + "号室" : ""}\n住所：${propertyAddress || "不明"}\n家賃：${rent || "不明"}円\n手元の見積書もこの後お送りします。内容が適正か、無駄な付帯費用がないかアドバイスいただけますか？`,
+              },
+              {
+                label: "この条件で申し込みを進める",
+                emoji: "✍️",
+                color: "bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100",
+                msg: `以下の物件の入居申し込みを希望します。\n物件名：${propertyName || "不明"} ${roomNumber ? roomNumber + "号室" : ""}\n住所：${propertyAddress || "不明"}\n家賃：${rent || "不明"}円\n申込フォームの発行と、管理会社確認済みの正式な見積書の作成をお願いいたします。`,
+              },
+            ].map(({ label, emoji, color, msg }) => (
+              <a
+                key={label}
+                href={`https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(msg)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  // フォールバック: line.me が動かない場合はlin.ee
+                  e.preventDefault();
+                  const lineUrl = `https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(msg)}`;
+                  const fallback = "https://lin.ee/fhtzVrp";
+                  window.open(lineUrl, "_blank");
+                  setTimeout(() => {}, 500);
+                  _ = fallback;
+                }}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-colors cursor-pointer ${color}`}
+              >
+                <span className="text-lg flex-shrink-0">{emoji}</span>
+                <span>{label}</span>
+                <svg className="w-4 h-4 ml-auto flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </a>
+            ))}
+
+            {/* 内見予約ボタン（モーダル付き） */}
+            <button
+              onClick={() => setShowInternalModal(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 text-sm font-medium transition-colors"
+            >
+              <span className="text-lg flex-shrink-0">📅</span>
+              <span>内見を予約する（無料）</span>
+              <svg className="w-4 h-4 ml-auto flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
         {/* PDF/PNG */}
         <div className="flex gap-2">
           <button onClick={handlePrint}
@@ -484,6 +561,43 @@ export const EstimateSheet = ({
         </button>
         <p className="text-xs text-gray-400 text-center">※スマホでは画像付きシェアシートが開きます。PCでは画像を保存してからお送りください。</p>
       </div>
+
+      {/* 内見予約モーダル */}
+      {showInternalModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowInternalModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <p className="font-bold text-gray-900">内見予約</p>
+              <button onClick={() => setShowInternalModal(false)} className="text-gray-400 text-xl">✕</button>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">第一希望日</label>
+              <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">時間帯</label>
+              <div className="flex gap-2">
+                {["午前", "午後", "夕方"].map(t => (
+                  <button key={t} onClick={() => setVisitTime(t)}
+                    className={"flex-1 py-2 text-sm rounded-lg border transition-colors " + (visitTime === t ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200")}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <a
+              href={`https://line.me/R/oaMessage/%40xrooms/?${encodeURIComponent(`以下の物件の内見を希望します。\n物件名：${propertyName || "不明"} ${roomNumber ? roomNumber + "号室" : ""}\n住所：${propertyAddress || "不明"}\n家賃：${rent || "不明"}円\n第一希望：${visitDate || "未定"} ${visitTime}\n併せて、AI診断結果に基づいた正確な見積書も事前に送付いただけますか？`)}`}
+              target="_blank" rel="noopener noreferrer"
+              onClick={() => setShowInternalModal(false)}
+              className="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition-colors"
+            >
+              📅 この日程でLINEを送る
+            </a>
+            <p className="text-xs text-gray-400 text-center">LINEアプリが開きます</p>
+          </div>
+        </div>
+      )}
 
       {/* 印刷スタイル */}
       <style>{`
