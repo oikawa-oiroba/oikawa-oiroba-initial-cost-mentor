@@ -5,6 +5,7 @@ interface EstimateSheetProps {
   result: any;
   monthlyResult: number | null;
   monthlyItems?: Array<{ label: string; amount: number }>;
+  evidence?: Record<string, string>;
   propertyName: string;
   roomNumber: string;
   propertyAddress: string;
@@ -15,7 +16,7 @@ interface EstimateSheetProps {
 }
 
 export const EstimateSheet = ({
-  result, monthlyResult, monthlyItems, propertyName, roomNumber, propertyAddress, propertyUrl, propertyImage, rent, managementFee
+  result, monthlyResult, monthlyItems, evidence, propertyName, roomNumber, propertyAddress, propertyUrl, propertyImage, rent, managementFee
 }: EstimateSheetProps) => {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [showFullImage, setShowFullImage] = useState(false);
@@ -98,6 +99,37 @@ export const EstimateSheet = ({
 
   return (
     <div>
+      {/* 計算根拠ボックス */}
+      {evidence && Object.keys(evidence).length > 0 && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-3 no-print">
+          <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            計算根拠（図面より読み取り）
+          </p>
+          <div className="space-y-1">
+            {[
+              { key: "rent", label: "家賃" },
+              { key: "managementFee", label: "管理費" },
+              { key: "deposit", label: "敷金" },
+              { key: "keyMoney", label: "礼金" },
+              { key: "agencyFee", label: "仲介手数料" },
+              { key: "guarantee", label: "保証会社" },
+              { key: "insurance", label: "火災保険" },
+              { key: "keyExchange", label: "鍵交換" },
+              { key: "support", label: "24hサポート" },
+              { key: "availableDate", label: "入居可能日" },
+            ].filter(({ key }) => evidence[key]).map(({ key, label }) => (
+              <div key={key} className="flex gap-2 text-xs">
+                <span className="text-gray-400 w-20 flex-shrink-0">{label}</span>
+                <span className="text-gray-600">└ 「{evidence[key]}」</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 見積書本体 */}
       <div ref={sheetRef} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden estimate-sheet">
         {/* ヘッダー */}
