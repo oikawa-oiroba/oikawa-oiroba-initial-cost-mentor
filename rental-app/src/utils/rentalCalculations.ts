@@ -22,6 +22,7 @@ export interface InitialCostInput {
   acCleaningFee: number;
   hasSupport: boolean;
   supportFee: number;
+  supportFeeName: string;
   hasDisinfection: boolean;
   disinfectionFee: number;
   hasContractFee: boolean;
@@ -54,14 +55,29 @@ export interface ProrationInfo {
 }
 
 export const getDefaultMoveInDate = (): string => {
+  return getNextSaturday(21);
+};
+
+// 3週間後の土曜日を返す
+const getNextSaturday = (minDaysFromNow: number): string => {
   const today = new Date();
   const target = new Date(today);
-  target.setDate(today.getDate() + 21);
-  // 次の土曜日に調整 (0=日, 6=土)
+  target.setDate(today.getDate() + minDaysFromNow);
   const day = target.getDay();
   const daysToSat = day === 6 ? 0 : (6 - day);
   target.setDate(target.getDate() + daysToSat);
   return target.toISOString().split('T')[0];
+};
+
+// 過去日付・今日の場合は3週間後の土曜日に補正
+export const ensureFutureDate = (dateStr: string): string => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime()) || date <= today) {
+    return getNextSaturday(21);
+  }
+  return dateStr;
 };
 
 export const calculateAgencyFee = (rent: number, type: string, customAmount?: number): number => {
@@ -153,7 +169,7 @@ export const calculateInitialCost = (input: InitialCostInput) => {
       ...(input.hasKeyExchange ? { keyExchangeFee: { label: "鍵交換費用", amount: keyExchangeFee, category: "option" } } : {}),
       ...(input.hasCleaning ? { cleaningFee: { label: "退去時クリーニング", amount: cleaningFee, category: "cleaning" } } : {}),
       ...(input.hasAcCleaning ? { acCleaningFee: { label: "エアコン洗浄", amount: acCleaningFee, category: "cleaning" } } : {}),
-      ...(input.hasSupport ? { supportFee: { label: "24時間サポート", amount: supportFee, category: "option" } } : {}),
+      ...(input.hasSupport ? { supportFee: { label: input.supportFeeName || "24時間サポート", amount: supportFee, category: "option" } } : {}),
       ...(input.hasDisinfection ? { disinfectionFee: { label: "室内除菌抗菌", amount: disinfectionFee, category: "option" } } : {}),
       ...(input.hasContractFee ? { contractFee: { label: "契約事務手数料", amount: contractFee, category: "option" } } : {}),
       ...extraItems,
