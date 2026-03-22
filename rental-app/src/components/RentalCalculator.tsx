@@ -595,7 +595,7 @@ export const RentalCalculator = () => {
             rent={rent}
             managementFee={managementFee}
           />
-        )}
+         )}
       </div>
     </div>
   );
